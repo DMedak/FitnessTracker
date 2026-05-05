@@ -1,0 +1,283 @@
+import React from 'react';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useApp } from '../contexts/AppContext';
+import { formatDate, formatTime } from '../utils/calculations';
+
+export const WeightHistoryScreen: React.FC = () => {
+  const { weights, removeWeightEntry } = useApp();
+
+  const sortedWeights = [...weights].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
+  const handleDelete = (id: string) => {
+    Alert.alert('Delete entry', 'Are you sure you want to delete this entry?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => removeWeightEntry(id),
+      },
+    ]);
+  };
+
+  return (
+    <View style={styles.root}>
+      <LinearGradient colors={['#06b6d4', '#10b981']} style={styles.header}>
+        <Text style={styles.headerTitle}>Weight History</Text>
+        <Text style={styles.headerSubtitle}>Track your weight over time</Text>
+      </LinearGradient>
+
+      <ScrollView contentContainerStyle={styles.content}>
+        <Pressable onPress={() => router.push('/add-weight')}>
+          <LinearGradient colors={['#06b6d4', '#10b981']} style={styles.addButton}>
+            <MaterialCommunityIcons name="plus" size={22} color="white" />
+            <Text style={styles.addButtonText}>Add Weight Entry</Text>
+          </LinearGradient>
+        </Pressable>
+
+        {sortedWeights.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <View style={styles.emptyIcon}>
+              <MaterialCommunityIcons name="calendar-outline" size={34} color="#94a3b8" />
+            </View>
+            <Text style={styles.emptyTitle}>No weight entries yet</Text>
+            <Text style={styles.emptyText}>
+              Start tracking by adding your first weight entry
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.list}>
+            {sortedWeights.map((entry, index) => {
+              const prevEntry = sortedWeights[index + 1];
+              const diff = prevEntry ? entry.weight - prevEntry.weight : 0;
+
+              return (
+                <View key={entry.id} style={styles.card}>
+                  <View style={styles.row}>
+                    <View style={styles.entryContent}>
+                      <View style={styles.weightLine}>
+                        <Text style={styles.weightText}>{entry.weight} kg</Text>
+
+                        {diff !== 0 && (
+                          <View
+                            style={[
+                              styles.diffBadge,
+                              diff < 0 ? styles.diffGreen : styles.diffOrange,
+                            ]}
+                          >
+                            <MaterialCommunityIcons
+                              name={diff < 0 ? 'trending-down' : 'trending-up'}
+                              size={14}
+                              color={diff < 0 ? '#15803d' : '#c2410c'}
+                            />
+                            <Text
+                              style={[
+                                styles.diffText,
+                                diff < 0 ? styles.diffTextGreen : styles.diffTextOrange,
+                              ]}
+                            >
+                              {Math.abs(diff).toFixed(1)} kg
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <Text style={styles.dateText}>
+                        {formatDate(entry.date)} • {formatTime(entry.date)}
+                      </Text>
+
+                      {entry.note ? (
+                        <Text style={styles.noteText}>{entry.note}</Text>
+                      ) : null}
+                    </View>
+
+                    <Pressable style={styles.deleteButton} onPress={() => handleDelete(entry.id)}>
+                      <MaterialCommunityIcons name="trash-can-outline" size={22} color="#ef4444" />
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
+
+      <View style={styles.bottomNav}>
+        <Pressable onPress={() => router.push('/dashboard')}>
+          <MaterialCommunityIcons name="home" size={26} color="#64748b" />
+        </Pressable>
+        <Pressable onPress={() => router.push('/activity')}>
+          <MaterialCommunityIcons name="run" size={26} color="#64748b" />
+        </Pressable>
+        <Pressable onPress={() => router.push('/weight')}>
+          <MaterialCommunityIcons name="scale-bathroom" size={26} color="#06b6d4" />
+        </Pressable>
+        <Pressable onPress={() => router.push('/profile')}>
+          <MaterialCommunityIcons name="account" size={26} color="#64748b" />
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#ecfeff',
+  },
+  header: {
+    padding: 24,
+    paddingTop: 50,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    color: '#cffafe',
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 95,
+    gap: 14,
+  },
+  addButton: {
+    height: 50,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  addButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  emptyCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  emptyIcon: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    color: '#64748b',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  emptyText: {
+    color: '#94a3b8',
+    textAlign: 'center',
+  },
+  list: {
+    gap: 12,
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 7,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  entryContent: {
+    flex: 1,
+  },
+  weightLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 5,
+  },
+  weightText: {
+    fontSize: 25,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  diffBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  diffGreen: {
+    backgroundColor: '#dcfce7',
+  },
+  diffOrange: {
+    backgroundColor: '#ffedd5',
+  },
+  diffText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  diffTextGreen: {
+    color: '#15803d',
+  },
+  diffTextOrange: {
+    color: '#c2410c',
+  },
+  dateText: {
+    color: '#64748b',
+    fontSize: 14,
+  },
+  noteText: {
+    color: '#6b7280',
+    fontSize: 14,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  deleteButton: {
+    padding: 8,
+    borderRadius: 10,
+  },
+  bottomNav: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'white',
+    paddingVertical: 16,
+    paddingHorizontal: 34,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+});

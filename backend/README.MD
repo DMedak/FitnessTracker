@@ -1,13 +1,19 @@
-Pokretanje backend servera
+# Pokretanje backend servera
 
-Otvoriti terminal i ući u backend folder:
+## 1. Ulazak u folder
+```bash
 cd backend
+```
 
-Instalirati potrebne pakete:
+## 2. Instalacija paketa
+```bash
 npm install
+```
 
-Pokrenuti server:
+## 3. Pokretanje servera
+```bash
 npx nodemon src/server.js
+```
 
-Backend je dostupan na:
+## 🌐 Backend URL
 http://localhost:3000

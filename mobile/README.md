@@ -1,15 +1,21 @@
-Pokretanje mobilne aplikacije
+# Pokretanje mobilne aplikacije
 
-Otvoriti novi terminal i ući u mobile folder:
+## 1. Ulazak u folder
+```bash
 cd mobile
+```
 
-Instalirati potrebne pakete:
+## 2. Instalacija paketa
+```bash
 npm install
+```
 
-Pokrenuti Expo aplikaciju:
+## 3. Pokretanje aplikacije
+```bash
 npx expo start
+```
 
-Pokretanje aplikacije:
-skenirati QR kod pomoću Expo Go aplikacije
-ILI
-pokrenuti Android emulator preko Android Studio
+## ▶️ Pokretanje
+- skenirati QR kod pomoću Expo Go aplikacije  
+ILI  
+- pokrenuti Android emulator

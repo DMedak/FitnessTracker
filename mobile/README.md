@@ -15,7 +15,7 @@ npm install
 npx expo start
 ```
 
-## ▶️ Pokretanje
+## Pokretanje
 - skenirati QR kod pomoću Expo Go aplikacije  
 ILI  
 - pokrenuti Android emulator

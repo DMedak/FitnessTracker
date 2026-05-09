@@ -9,10 +9,12 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useApp } from '../contexts/AppContext';
 import { calculateCaloriesBurned } from '../utils/calculations';
+import { BottomNav } from '../components/BottomNav';
+import { API_URL } from '../config/api';
 
 const activityTypes = [
   'Walking',
@@ -34,7 +36,6 @@ const activityTypes = [
 ];
 
 export const AddActivityScreen: React.FC = () => {
-  const { addActivity, user } = useApp();
 
   const [activityType, setActivityType] = useState('');
   const [duration, setDuration] = useState('');
@@ -49,7 +50,7 @@ export const AddActivityScreen: React.FC = () => {
     const calories = calculateCaloriesBurned(
       type,
       parseFloat(minutes),
-      user?.currentWeight || 70
+      70
     );
 
     setEstimatedCalories(calories);
@@ -65,16 +66,50 @@ export const AddActivityScreen: React.FC = () => {
     calculateCalories(value, duration);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+  try {
     if (!activityType || !duration || parseFloat(duration) <= 0) {
-      Alert.alert('Greška', 'Popuni sva polja');
+      Alert.alert('Error', 'Fill in all required fields');
       return;
     }
 
-    addActivity(activityType, parseFloat(duration), estimatedCalories);
-    Alert.alert('Uspjeh', 'Aktivnost je spremljena');
+    const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
+
+    if (!korisnickoIme) {
+      Alert.alert('Error', 'User not found');
+      return;
+    }
+
+    const body = {
+      korisnickoIme,
+      datumAktivnosti: new Date().toISOString().split('T')[0],
+      vrstaAktivnosti: activityType,
+      trajanje: parseInt(duration),
+      potrosnjaKalorija: estimatedCalories,
+      napomena: '',
+    };
+
+    const response = await fetch(`${API_URL}/aktivnost`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      Alert.alert('Error', result.message || 'Saving failed');
+      return;
+    }
+
+    Alert.alert('Success', 'Activity saved');
     router.replace('/activity');
-  };
+  } catch (error) {
+    Alert.alert('Error', 'Saving failed');
+  }
+};
 
   return (
     <View style={styles.root}>
@@ -161,6 +196,7 @@ export const AddActivityScreen: React.FC = () => {
           </Text>
         </View>
       </ScrollView>
+      <BottomNav />
     </View>
   );
 };
@@ -196,6 +232,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    paddingBottom: 120,
   },
   card: {
     backgroundColor: 'white',

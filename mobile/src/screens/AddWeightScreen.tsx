@@ -9,26 +9,59 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useApp } from '../contexts/AppContext';
+import { BottomNav } from '../components/BottomNav';
+import { API_URL } from '../config/api';
 
 export const AddWeightScreen: React.FC = () => {
-  const { addWeightEntry } = useApp();
 
   const [weight, setWeight] = useState('');
   const [note, setNote] = useState('');
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+  try {
     if (!weight || parseFloat(weight) <= 0) {
-      Alert.alert('Greška', 'Unesi ispravnu težinu');
+      Alert.alert('Error', 'Enter valid weight');
       return;
     }
 
-    addWeightEntry(parseFloat(weight), note || undefined);
-    Alert.alert('Uspjeh', 'Težina je spremljena');
+    const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
+
+    if (!korisnickoIme) {
+      Alert.alert('Error', 'User not found');
+      return;
+    }
+
+    const body = {
+      korisnickoIme,
+      datumUnosa: new Date().toISOString().split('T')[0],
+      tezina: parseFloat(weight),
+      napomena: note,
+    };
+
+    const response = await fetch(`${API_URL}/tezina`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      Alert.alert('Error', result.message || 'Saving failed');
+      return;
+    }
+
+    Alert.alert('Success', 'Weight saved');
     router.replace('/weight');
-  };
+  } catch (error) {
+    Alert.alert('Error', 'Saving failed');
+  }
+};
 
   return (
     <View style={styles.root}>
@@ -92,6 +125,7 @@ export const AddWeightScreen: React.FC = () => {
           </Text>
         </View>
       </ScrollView>
+      <BottomNav />
     </View>
   );
 };

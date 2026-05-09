@@ -1,91 +1,212 @@
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
+import { BottomNav } from '../components/BottomNav';
+import { API_URL } from '../config/api';
+
+type Profil = {
+  korisnickoIme: string;
+  dob: number;
+  spol: string;
+  visina: number;
+  trenutnaTezina: number;
+  cilj: string;
+};
+
 export const DashboardScreen = () => {
+  const [profil, setProfil] = useState<Profil | null>(null);
+
+  useEffect(() => {
+    loadProfil();
+  }, []);
+
+  const loadProfil = async () => {
+    try {
+      const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
+
+      if (!korisnickoIme) {
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/profil/${korisnickoIme}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setProfil(data);
+      }
+    } catch (error) {
+      // silent fail for dashboard
+    }
+  };
+
+  const calculateBMI = () => {
+    if (!profil?.visina || !profil?.trenutnaTezina) {
+      return '--';
+    }
+
+    const heightMeters = profil.visina / 100;
+    const bmi = profil.trenutnaTezina / (heightMeters * heightMeters);
+
+    return bmi.toFixed(1);
+  };
+
+  const goalText = () => {
+    if (!profil?.cilj) {
+      return '--';
+    }
+
+    switch (profil.cilj) {
+      case 'loss':
+        return 'Weight Loss';
+      case 'gain':
+        return 'Weight Gain';
+      case 'maintenance':
+        return 'Maintain';
+      default:
+        return profil.cilj;
+    }
+  };
+
   return (
-    <LinearGradient colors={['#ecfeff', '#eff6ff', '#ecfdf5']} style={styles.root}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <LinearGradient colors={['#06b6d4', '#10b981']} style={styles.header}>
-          <Text style={styles.headerTitle}>Pozdrav! 👋</Text>
-          <Text style={styles.headerSubtitle}>Nastavi pratiti svoj napredak</Text>
-        </LinearGradient>
+    <View style={styles.root}>
+      <LinearGradient
+        colors={['#ecfeff', '#eff6ff', '#ecfdf5']}
+        style={styles.root}
+      >
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <LinearGradient
+            colors={['#06b6d4', '#10b981']}
+            style={styles.header}
+          >
+            <Text style={styles.headerTitle}>
+              {profil?.korisnickoIme
+                ? `Hello, ${profil.korisnickoIme}! 👋`
+                : 'Hello! 👋'}
+            </Text>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Weight Progress</Text>
+            <Text style={styles.headerSubtitle}>
+              Continue tracking your progress
+            </Text>
+          </LinearGradient>
 
-          <View style={styles.row}>
-            <View>
-              <Text style={styles.smallText}>Current</Text>
-              <Text style={styles.bigText}>-- kg</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Weight Progress</Text>
+
+            <View style={styles.row}>
+              <View>
+                <Text style={styles.smallText}>Current</Text>
+
+                <Text style={styles.bigText}>
+                  {profil?.trenutnaTezina
+                    ? `${profil.trenutnaTezina} kg`
+                    : '-- kg'}
+                </Text>
+              </View>
+
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.smallText}>Goal</Text>
+
+                <Text style={styles.bigTextMuted}>
+                  {goalText()}
+                </Text>
+              </View>
             </View>
 
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.smallText}>Goal</Text>
-              <Text style={styles.bigTextMuted}>-- kg</Text>
+            <View style={styles.progressBackground}>
+              <View style={styles.progressFill} />
             </View>
           </View>
 
-          <View style={styles.progressBackground}>
-            <View style={styles.progressFill} />
+          <View style={styles.grid}>
+            <LinearGradient
+              colors={['#06b6d4', '#0891b2']}
+              style={styles.statCard}
+            >
+              <MaterialCommunityIcons name="fire" size={30} color="white" />
+              <Text style={styles.statNumber}>0</Text>
+              <Text style={styles.statLabel}>Calories Burned Today</Text>
+            </LinearGradient>
+
+            <LinearGradient
+              colors={['#10b981', '#059669']}
+              style={styles.statCard}
+            >
+              <MaterialCommunityIcons name="heart-pulse" size={30} color="white" />
+              <Text style={styles.statNumber}>{calculateBMI()}</Text>
+              <Text style={styles.statLabel}>BMI</Text>
+            </LinearGradient>
           </View>
-        </View>
 
-        <View style={styles.grid}>
-          <LinearGradient colors={['#06b6d4', '#0891b2']} style={styles.statCard}>
-            <MaterialCommunityIcons name="fire" size={30} color="white" />
-            <Text style={styles.statNumber}>0</Text>
-            <Text style={styles.statLabel}>Calories Burned Today</Text>
-          </LinearGradient>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
 
-          <LinearGradient colors={['#10b981', '#059669']} style={styles.statCard}>
-            <MaterialCommunityIcons name="heart-pulse" size={30} color="white" />
-            <Text style={styles.statNumber}>--</Text>
-            <Text style={styles.statLabel}>BMI</Text>
-          </LinearGradient>
-        </View>
+          <View style={styles.grid}>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => router.push('/add-weight')}
+            >
+              <MaterialCommunityIcons name="plus" size={28} color="#374151" />
+              <Text style={styles.actionText}>Add Weight</Text>
+            </Pressable>
 
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => router.push('/add-activity')}
+            >
+              <MaterialCommunityIcons name="plus" size={28} color="#374151" />
+              <Text style={styles.actionText}>Add Activity</Text>
+            </Pressable>
+          </View>
 
-        <View style={styles.grid}>
-          <Pressable style={styles.actionButton} onPress={() => router.push('/add-weight')}>
-            <MaterialCommunityIcons name="plus" size={28} color="#374151" />
-            <Text style={styles.actionText}>Add Weight</Text>
-          </Pressable>
+          <View style={styles.grid}>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => router.push('/weight')}
+            >
+              <MaterialCommunityIcons name="scale-bathroom" size={28} color="#374151" />
+              <Text style={styles.actionText}>Weight History</Text>
+            </Pressable>
 
-          <Pressable style={styles.actionButton} onPress={() => router.push('/add-activity')}>
-            <MaterialCommunityIcons name="plus" size={28} color="#374151" />
-            <Text style={styles.actionText}>Add Activity</Text>
-          </Pressable>
-        </View>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => router.push('/activity')}
+            >
+              <MaterialCommunityIcons name="run" size={28} color="#374151" />
+              <Text style={styles.actionText}>Activity History</Text>
+            </Pressable>
+          </View>
 
-        <View style={styles.grid}>
-          <Pressable style={styles.actionButton} onPress={() => router.push('/weight')}>
-            <MaterialCommunityIcons name="scale-bathroom" size={28} color="#374151" />
-            <Text style={styles.actionText}>Weight History</Text>
-          </Pressable>
+          <View style={styles.grid}>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => router.push('/progress')}
+            >
+              <MaterialCommunityIcons name="chart-line" size={28} color="#374151" />
+              <Text style={styles.actionText}>Progress</Text>
+            </Pressable>
 
-          <Pressable style={styles.actionButton} onPress={() => router.push('/activity')}>
-            <MaterialCommunityIcons name="run" size={28} color="#374151" />
-            <Text style={styles.actionText}>Activity History</Text>
-          </Pressable>
-        </View>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => router.push('/profile')}
+            >
+              <MaterialCommunityIcons name="account" size={28} color="#374151" />
+              <Text style={styles.actionText}>Profile</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
 
-        <View style={styles.grid}>
-          <Pressable style={styles.actionButton} onPress={() => router.push('/progress')}>
-            <MaterialCommunityIcons name="chart-line" size={28} color="#374151" />
-            <Text style={styles.actionText}>Progress</Text>
-          </Pressable>
-
-          <Pressable style={styles.actionButton} onPress={() => router.push('/profile')}>
-            <MaterialCommunityIcons name="account" size={28} color="#374151" />
-            <Text style={styles.actionText}>Profile</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </LinearGradient>
+        <BottomNav />
+      </LinearGradient>
+    </View>
   );
 };
 
@@ -94,7 +215,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scroll: {
-    paddingBottom: 32,
+    paddingBottom: 120,
   },
   header: {
     padding: 28,
@@ -143,7 +264,7 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
   bigTextMuted: {
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: '700',
     color: '#6b7280',
   },

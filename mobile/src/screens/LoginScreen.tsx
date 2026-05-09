@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { loginUser } from '../services/authService';
@@ -25,7 +25,7 @@ export const LoginScreen = () => {
     setError('');
 
     if (!korisnickoIme || !lozinka) {
-      setError('Unesi korisničko ime i lozinku');
+      setError('Please enter username and password');
       return;
     }
 
@@ -37,13 +37,21 @@ export const LoginScreen = () => {
         lozinka,
       });
 
-      if (data?.token) {
-        router.replace('/dashboard');
-      } else {
-        setError('Neispravno korisničko ime ili lozinka');
+      if (!data?.korisnik && !data?.user) {
+        setError('Invalid username or password');
+        return;
       }
+
+      await AsyncStorage.setItem('korisnickoIme', korisnickoIme);
+
+      await AsyncStorage.setItem(
+        'user',
+        JSON.stringify(data.korisnik || data.user)
+      );
+
+      router.replace('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Došlo je do greške. Pokušaj ponovno.');
+      setError(err.message || 'There was an error logging in');
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +85,7 @@ export const LoginScreen = () => {
               <Text style={styles.cardSubtitle}>Sign in to your account</Text>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Korisničko ime</Text>
+                <Text style={styles.label}>Username</Text>
                 <View style={styles.inputWrapper}>
                   <MaterialCommunityIcons
                     name="account-outline"
@@ -88,7 +96,7 @@ export const LoginScreen = () => {
                   <TextInput
                     value={korisnickoIme}
                     onChangeText={setKorisnickoIme}
-                    placeholder="Unesi korisničko ime"
+                    placeholder="Enter username"
                     autoCapitalize="none"
                     style={styles.input}
                   />
@@ -96,7 +104,7 @@ export const LoginScreen = () => {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Lozinka</Text>
+                <Text style={styles.label}>Password</Text>
                 <View style={styles.inputWrapper}>
                   <MaterialCommunityIcons
                     name="lock-outline"

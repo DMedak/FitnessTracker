@@ -25,12 +25,12 @@ const register = async (req, res) => {
     });
 
     return res.status(201).json({
-      message: 'Korisnik uspješno registriran.',
+      message: 'User registered successfully.',
       korisnik,
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Greška kod registracije.',
+      message: 'Error during registration.',
       error: error.message,
     });
   }
@@ -45,16 +45,16 @@ const login = async (req, res) => {
     });
 
     if (!korisnik) {
-      return res.status(401).json({ message: 'Neispravni podaci za prijavu.' });
+      return res.status(401).json({ message: 'Wrong username or password.' });
     }
 
     return res.json({
-      message: 'Prijava uspješna.',
+      message: 'Login successful.',
       korisnik,
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Greška kod prijave.',
+      message: 'Error during login.',
       error: error.message,
     });
   }

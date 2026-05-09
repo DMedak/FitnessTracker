@@ -8,14 +8,19 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useApp } from '../contexts/AppContext';
+import { API_URL } from '../config/api';
 
 export const OnboardingScreen: React.FC = () => {
   const { completeOnboarding } = useApp();
 
   const [step, setStep] = useState(1);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     age: '',
     gender: '',
@@ -27,22 +32,66 @@ export const OnboardingScreen: React.FC = () => {
 
   const totalSteps = 4;
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    setError('');
+
     if (step < totalSteps) {
       setStep(step + 1);
       return;
     }
 
-    completeOnboarding({
-      age: parseInt(formData.age),
-      gender: formData.gender as 'male' | 'female' | 'other',
-      height: parseFloat(formData.height),
-      currentWeight: parseFloat(formData.weight),
-      goalWeight: parseFloat(formData.goalWeight),
-      goal: formData.goal as 'loss' | 'gain' | 'maintenance',
-    });
+    try {
+      setIsLoading(true);
 
-    router.replace('/dashboard');
+      const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
+
+      if (!korisnickoIme) {
+        setError('User data missing. Please login again.');
+        return;
+      }
+
+      const body = {
+        korisnickoIme: korisnickoIme.trim(),
+        dob: parseInt(formData.age),
+        spol: formData.gender,
+        visina: parseFloat(formData.height),
+        trenutnaTezina: parseFloat(formData.weight),
+        cilj: formData.goal,
+      };
+
+      const response = await fetch(`${API_URL}/profil`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.message || result.error || 'Profile setup failed.');
+        return;
+      }
+
+      await AsyncStorage.setItem('profil', JSON.stringify(result.profil || body));
+
+      completeOnboarding({
+        korisnickoIme: korisnickoIme.trim(),
+        age: parseInt(formData.age),
+        gender: formData.gender as 'male' | 'female' | 'other',
+        height: parseFloat(formData.height),
+        currentWeight: parseFloat(formData.weight),
+        goalWeight: parseFloat(formData.goalWeight),
+        goal: formData.goal as 'loss' | 'gain' | 'maintenance',
+      });
+
+      router.replace('/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Profile setup failed.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -201,6 +250,12 @@ export const OnboardingScreen: React.FC = () => {
             </View>
           )}
 
+          {error ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
           <View style={styles.footer}>
             {step > 1 && (
               <Pressable style={styles.backButton} onPress={handleBack}>
@@ -211,12 +266,12 @@ export const OnboardingScreen: React.FC = () => {
 
             <Pressable
               onPress={handleNext}
-              disabled={!isStepValid()}
-              style={[styles.nextWrapper, !isStepValid() && styles.disabled]}
+              disabled={!isStepValid() || isLoading}
+              style={[styles.nextWrapper, (!isStepValid() || isLoading) && styles.disabled]}
             >
               <LinearGradient colors={['#06b6d4', '#10b981']} style={styles.nextButton}>
                 <Text style={styles.nextText}>
-                  {step === totalSteps ? 'Complete' : 'Next'}
+                  {isLoading ? 'Saving...' : step === totalSteps ? 'Complete' : 'Next'}
                 </Text>
                 {step < totalSteps && (
                   <MaterialCommunityIcons name="arrow-right" size={18} color="white" />
@@ -231,9 +286,7 @@ export const OnboardingScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
+  root: { flex: 1 },
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -283,9 +336,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 15,
   },
-  section: {
-    gap: 12,
-  },
+  section: { gap: 12 },
   label: {
     color: '#374151',
     fontSize: 14,
@@ -334,9 +385,7 @@ const styles = StyleSheet.create({
   optionTextActive: {
     color: '#0891b2',
   },
-  goalColumn: {
-    gap: 10,
-  },
+  goalColumn: { gap: 10 },
   goalButton: {
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -344,6 +393,16 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     backgroundColor: 'white',
+  },
+  errorBox: {
+    backgroundColor: '#fef2f2',
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 18,
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 14,
   },
   footer: {
     flexDirection: 'row',
@@ -364,9 +423,7 @@ const styles = StyleSheet.create({
     color: '#374151',
     fontWeight: '700',
   },
-  nextWrapper: {
-    flex: 1,
-  },
+  nextWrapper: { flex: 1 },
   nextButton: {
     height: 50,
     borderRadius: 10,
@@ -380,7 +437,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 16,
   },
-  disabled: {
-    opacity: 0.45,
-  },
+  disabled: { opacity: 0.45 },
 });

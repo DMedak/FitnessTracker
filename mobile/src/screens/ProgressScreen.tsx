@@ -1,21 +1,75 @@
-import React, { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useApp } from '../contexts/AppContext';
+import { BottomNav } from '../components/BottomNav';
+import { API_URL } from '../config/api';
 
 const COLORS = ['#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
+type Tezina = {
+  korisnickoIme: string;
+  datumUnosa: string;
+  tezina: number;
+  napomena?: string;
+};
+
+type Aktivnost = {
+  korisnickoIme: string;
+  datumAktivnosti: string;
+  vrstaAktivnosti: string;
+  trajanje: number;
+  potrosnjaKalorija: number;
+  napomena?: string;
+};
+
 export const ProgressScreen: React.FC = () => {
-  const { weights, activities } = useApp();
+  const [weights, setWeights] = useState<Tezina[]>([]);
+  const [activities, setActivities] = useState<Aktivnost[]>([]);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
+
+      if (!korisnickoIme) {
+        return;
+      }
+
+      const [weightResponse, activityResponse] = await Promise.all([
+        fetch(`${API_URL}/tezina/${korisnickoIme}`),
+        fetch(`${API_URL}/aktivnost/${korisnickoIme}`),
+      ]);
+
+      const weightData = await weightResponse.json();
+      const activityData = await activityResponse.json();
+
+      if (weightResponse.ok) {
+        setWeights(weightData);
+      }
+
+      if (activityResponse.ok) {
+        setActivities(activityData);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   const weightChartData = useMemo(() => {
     return [...weights]
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .sort(
+        (a, b) =>
+          new Date(a.datumUnosa).getTime() -
+          new Date(b.datumUnosa).getTime()
+      )
       .map((w) => ({
-        date: new Date(w.date).toLocaleDateString(),
-        weight: w.weight,
+        date: new Date(w.datumUnosa).toLocaleDateString(),
+        weight: Number(w.tezina),
       }));
   }, [weights]);
 
@@ -27,13 +81,19 @@ export const ProgressScreen: React.FC = () => {
       date.setDate(date.getDate() - (6 - i));
 
       const dayActivities = activities.filter(
-        (a) => new Date(a.date).toDateString() === date.toDateString()
+        (a) => new Date(a.datumAktivnosti).toDateString() === date.toDateString()
       );
 
       return {
         day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        calories: dayActivities.reduce((sum, a) => sum + a.caloriesBurned, 0),
-        duration: dayActivities.reduce((sum, a) => sum + a.duration, 0),
+        calories: dayActivities.reduce(
+          (sum, a) => sum + Number(a.potrosnjaKalorija),
+          0
+        ),
+        duration: dayActivities.reduce(
+          (sum, a) => sum + Number(a.trajanje),
+          0
+        ),
       };
     });
   }, [activities]);
@@ -42,7 +102,10 @@ export const ProgressScreen: React.FC = () => {
     const typeMap = new Map<string, number>();
 
     activities.forEach((a) => {
-      typeMap.set(a.type, (typeMap.get(a.type) || 0) + a.duration);
+      typeMap.set(
+        a.vrstaAktivnosti,
+        (typeMap.get(a.vrstaAktivnosti) || 0) + Number(a.trajanje)
+      );
     });
 
     return Array.from(typeMap.entries())
@@ -55,11 +118,13 @@ export const ProgressScreen: React.FC = () => {
     if (weights.length < 2) return { change: '0.0', percentage: '0.0' };
 
     const sorted = [...weights].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      (a, b) =>
+        new Date(a.datumUnosa).getTime() -
+        new Date(b.datumUnosa).getTime()
     );
 
-    const first = sorted[0].weight;
-    const last = sorted[sorted.length - 1].weight;
+    const first = Number(sorted[0].tezina);
+    const last = Number(sorted[sorted.length - 1].tezina);
     const change = last - first;
     const percentage = ((change / first) * 100).toFixed(1);
 
@@ -67,7 +132,11 @@ export const ProgressScreen: React.FC = () => {
   }, [weights]);
 
   const totalActivities = activities.length;
-  const totalCalories = activities.reduce((sum, a) => sum + a.caloriesBurned, 0);
+
+  const totalCalories = activities.reduce(
+    (sum, a) => sum + Number(a.potrosnjaKalorija),
+    0
+  );
 
   return (
     <View style={styles.root}>
@@ -178,20 +247,7 @@ export const ProgressScreen: React.FC = () => {
         )}
       </ScrollView>
 
-      <View style={styles.bottomNav}>
-        <Pressable onPress={() => router.push('/dashboard')}>
-          <MaterialCommunityIcons name="home" size={26} color="#64748b" />
-        </Pressable>
-        <Pressable onPress={() => router.push('/activity')}>
-          <MaterialCommunityIcons name="run" size={26} color="#64748b" />
-        </Pressable>
-        <Pressable onPress={() => router.push('/weight')}>
-          <MaterialCommunityIcons name="scale-bathroom" size={26} color="#64748b" />
-        </Pressable>
-        <Pressable onPress={() => router.push('/profile')}>
-          <MaterialCommunityIcons name="account" size={26} color="#64748b" />
-        </Pressable>
-      </View>
+      <BottomNav />
     </View>
   );
 };
@@ -218,7 +274,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 95,
+    paddingBottom: 120,
     gap: 14,
   },
   statsRow: {
@@ -339,18 +395,5 @@ const styles = StyleSheet.create({
   emptyText: {
     color: '#94a3b8',
     textAlign: 'center',
-  },
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'white',
-    paddingVertical: 16,
-    paddingHorizontal: 34,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
 });

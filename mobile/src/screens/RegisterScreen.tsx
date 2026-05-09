@@ -10,15 +10,16 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useApp } from '../contexts/AppContext';
+import { registerUser } from '../services/authService';
 
 export const RegisterScreen: React.FC = () => {
-  const { register } = useApp();
-
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [korisnickoIme, setKorisnickoIme] = useState('');
+  const [ime, setIme] = useState('');
+  const [prezime, setPrezime] = useState('');
+  const [mail, setMail] = useState('');
   const [lozinka, setLozinka] = useState('');
   const [confirmLozinka, setConfirmLozinka] = useState('');
   const [error, setError] = useState('');
@@ -27,33 +28,53 @@ export const RegisterScreen: React.FC = () => {
   const handleRegister = async () => {
     setError('');
 
-    if (!name || !email || !lozinka || !confirmLozinka) {
-      setError('Popuni sva polja');
+    if (!korisnickoIme || !ime || !prezime || !mail || !lozinka || !confirmLozinka) {
+      setError('Please fill in all fields');
       return;
     }
 
     if (lozinka !== confirmLozinka) {
-      setError('Lozinke se ne podudaraju');
+      setError('Passwords do not match');
       return;
     }
 
     if (lozinka.length < 6) {
-      setError('Lozinka mora imati barem 6 znakova');
+      setError('Password must be at least 6 characters long');
       return;
     }
 
     try {
       setIsLoading(true);
 
-      const success = await register(name, email, lozinka);
+      const result = await registerUser({
+        korisnickoIme,
+        ime,
+        prezime,
+        mail,
+        lozinka,
+      });
 
-      if (success) {
-        router.replace('/onboarding');
-      } else {
-        setError('Registracija nije uspjela');
+      if (result?.error) {
+        setError(result.error || 'Registration failed');
+        return;
       }
-    } catch (err) {
-      setError('Došlo je do greške. Pokušaj ponovno.');
+
+      await AsyncStorage.setItem('korisnickoIme', korisnickoIme);
+
+      if (result?.token) {
+        await AsyncStorage.setItem('token', result.token);
+      }
+
+      if (result?.user || result?.korisnik) {
+        await AsyncStorage.setItem(
+          'user',
+          JSON.stringify(result.user || result.korisnik)
+        );
+      }
+
+      router.replace('/onboarding');
+    } catch (err: any) {
+      setError(err.message || 'There was an error during registration. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -87,13 +108,55 @@ export const RegisterScreen: React.FC = () => {
               <Text style={styles.cardSubtitle}>Sign up to get started</Text>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Full Name</Text>
+                <Text style={styles.label}>Username</Text>
                 <View style={styles.inputWrapper}>
-                  <MaterialCommunityIcons name="account-outline" size={22} color="#94a3b8" style={styles.icon} />
+                  <MaterialCommunityIcons
+                    name="account-circle-outline"
+                    size={22}
+                    color="#94a3b8"
+                    style={styles.icon}
+                  />
                   <TextInput
-                    value={name}
-                    onChangeText={setName}
-                    placeholder="John Doe"
+                    value={korisnickoIme}
+                    onChangeText={setKorisnickoIme}
+                    placeholder="JohnDoe"
+                    autoCapitalize="none"
+                    style={styles.input}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>First Name</Text>
+                <View style={styles.inputWrapper}>
+                  <MaterialCommunityIcons
+                    name="account-outline"
+                    size={22}
+                    color="#94a3b8"
+                    style={styles.icon}
+                  />
+                  <TextInput
+                    value={ime}
+                    onChangeText={setIme}
+                    placeholder="John"
+                    style={styles.input}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Last Name</Text>
+                <View style={styles.inputWrapper}>
+                  <MaterialCommunityIcons
+                    name="account-outline"
+                    size={22}
+                    color="#94a3b8"
+                    style={styles.icon}
+                  />
+                  <TextInput
+                    value={prezime}
+                    onChangeText={setPrezime}
+                    placeholder="Doe"
                     style={styles.input}
                   />
                 </View>
@@ -102,10 +165,15 @@ export const RegisterScreen: React.FC = () => {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Email</Text>
                 <View style={styles.inputWrapper}>
-                  <MaterialCommunityIcons name="email-outline" size={22} color="#94a3b8" style={styles.icon} />
+                  <MaterialCommunityIcons
+                    name="email-outline"
+                    size={22}
+                    color="#94a3b8"
+                    style={styles.icon}
+                  />
                   <TextInput
-                    value={email}
-                    onChangeText={setEmail}
+                    value={mail}
+                    onChangeText={setMail}
                     placeholder="your@email.com"
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -117,7 +185,12 @@ export const RegisterScreen: React.FC = () => {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Password</Text>
                 <View style={styles.inputWrapper}>
-                  <MaterialCommunityIcons name="lock-outline" size={22} color="#94a3b8" style={styles.icon} />
+                  <MaterialCommunityIcons
+                    name="lock-outline"
+                    size={22}
+                    color="#94a3b8"
+                    style={styles.icon}
+                  />
                   <TextInput
                     value={lozinka}
                     onChangeText={setLozinka}
@@ -131,7 +204,12 @@ export const RegisterScreen: React.FC = () => {
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Confirm Password</Text>
                 <View style={styles.inputWrapper}>
-                  <MaterialCommunityIcons name="lock-check-outline" size={22} color="#94a3b8" style={styles.icon} />
+                  <MaterialCommunityIcons
+                    name="lock-check-outline"
+                    size={22}
+                    color="#94a3b8"
+                    style={styles.icon}
+                  />
                   <TextInput
                     value={confirmLozinka}
                     onChangeText={setConfirmLozinka}

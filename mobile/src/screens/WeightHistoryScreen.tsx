@@ -8,27 +8,54 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useApp } from '../contexts/AppContext';
-import { formatDate, formatTime } from '../utils/calculations';
+import { formatDate } from '../utils/calculations';
+import { BottomNav } from '../components/BottomNav';
+import { API_URL } from '../config/api';
+
+type Tezina = {
+  korisnickoIme: string;
+  datumUnosa: string;
+  tezina: number;
+  napomena?: string;
+};
 
 export const WeightHistoryScreen: React.FC = () => {
-  const { weights, removeWeightEntry } = useApp();
+  const [weights, setWeights] = React.useState<Tezina[]>([]);
+
+  React.useEffect(() => {
+    loadWeights();
+  }, []);
+
+  const loadWeights = async () => {
+    try {
+      const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
+
+      if (!korisnickoIme) {
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/tezina/${korisnickoIme}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setWeights(data);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   const sortedWeights = [...weights].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    (a, b) =>
+      new Date(b.datumUnosa).getTime() -
+      new Date(a.datumUnosa).getTime()
   );
 
-  const handleDelete = (id: string) => {
-    Alert.alert('Delete entry', 'Are you sure you want to delete this entry?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => removeWeightEntry(id),
-      },
-    ]);
+  const handleDelete = () => {
+    Alert.alert('Info', 'Delete endpoint još nije napravljen na backendu');
   };
 
   return (
@@ -60,14 +87,21 @@ export const WeightHistoryScreen: React.FC = () => {
           <View style={styles.list}>
             {sortedWeights.map((entry, index) => {
               const prevEntry = sortedWeights[index + 1];
-              const diff = prevEntry ? entry.weight - prevEntry.weight : 0;
+              const diff = prevEntry
+                ? Number(entry.tezina) - Number(prevEntry.tezina)
+                : 0;
 
               return (
-                <View key={entry.id} style={styles.card}>
+                <View
+                  key={`${entry.korisnickoIme}-${entry.datumUnosa}`}
+                  style={styles.card}
+                >
                   <View style={styles.row}>
                     <View style={styles.entryContent}>
                       <View style={styles.weightLine}>
-                        <Text style={styles.weightText}>{entry.weight} kg</Text>
+                        <Text style={styles.weightText}>
+                          {entry.tezina} kg
+                        </Text>
 
                         {diff !== 0 && (
                           <View
@@ -94,15 +128,15 @@ export const WeightHistoryScreen: React.FC = () => {
                       </View>
 
                       <Text style={styles.dateText}>
-                        {formatDate(entry.date)} • {formatTime(entry.date)}
+                        {formatDate(entry.datumUnosa)}
                       </Text>
 
-                      {entry.note ? (
-                        <Text style={styles.noteText}>{entry.note}</Text>
+                      {entry.napomena ? (
+                        <Text style={styles.noteText}>{entry.napomena}</Text>
                       ) : null}
                     </View>
 
-                    <Pressable style={styles.deleteButton} onPress={() => handleDelete(entry.id)}>
+                    <Pressable style={styles.deleteButton} onPress={handleDelete}>
                       <MaterialCommunityIcons name="trash-can-outline" size={22} color="#ef4444" />
                     </Pressable>
                   </View>
@@ -113,20 +147,7 @@ export const WeightHistoryScreen: React.FC = () => {
         )}
       </ScrollView>
 
-      <View style={styles.bottomNav}>
-        <Pressable onPress={() => router.push('/dashboard')}>
-          <MaterialCommunityIcons name="home" size={26} color="#64748b" />
-        </Pressable>
-        <Pressable onPress={() => router.push('/activity')}>
-          <MaterialCommunityIcons name="run" size={26} color="#64748b" />
-        </Pressable>
-        <Pressable onPress={() => router.push('/weight')}>
-          <MaterialCommunityIcons name="scale-bathroom" size={26} color="#06b6d4" />
-        </Pressable>
-        <Pressable onPress={() => router.push('/profile')}>
-          <MaterialCommunityIcons name="account" size={26} color="#64748b" />
-        </Pressable>
-      </View>
+      <BottomNav />
     </View>
   );
 };
@@ -153,7 +174,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 95,
+    paddingBottom: 120,
     gap: 14,
   },
   addButton: {
@@ -266,18 +287,5 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: 8,
     borderRadius: 10,
-  },
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'white',
-    paddingVertical: 16,
-    paddingHorizontal: 34,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
 });

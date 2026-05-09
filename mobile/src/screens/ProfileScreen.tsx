@@ -1,76 +1,66 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useApp } from '../contexts/AppContext';
 import {
   calculateBMI,
   getBMICategory,
   getDailyCalorieGoal,
 } from '../utils/calculations';
+import { BottomNav } from '../components/BottomNav';
+import { API_URL } from '../config/api';
+
+type UserData = {
+  korisnickoIme: string;
+  ime: string;
+  prezime: string;
+  mail: string;
+};
+
+type ProfilData = {
+  korisnickoIme: string;
+  dob: number;
+  spol: 'male' | 'female' | 'other';
+  visina: number;
+  trenutnaTezina: number;
+  cilj: 'loss' | 'gain' | 'maintenance';
+};
 
 export const ProfileScreen: React.FC = () => {
-  const { user, logout, updateUser } = useApp();
-  const [isEditing, setIsEditing] = useState(false);
+  const [user, setUser] = useState<UserData | null>(null);
+  const [profil, setProfil] = useState<ProfilData | null>(null);
 
-  const [formData, setFormData] = useState({
-    name: user?.name || '',
-    age: user?.age?.toString() || '',
-    height: user?.height?.toString() || '',
-    goalWeight: user?.goalWeight?.toString() || '',
-    goal: user?.goal || 'maintenance',
-  });
+  useEffect(() => {
+    loadProfile();
+  }, []);
 
-  if (!user) {
-    return (
-      <View style={styles.center}>
-        <Text>Nema korisnika</Text>
-      </View>
-    );
-  }
+  const loadProfile = async () => {
+    const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
+    const storedUser = await AsyncStorage.getItem('user');
 
-  const bmi = calculateBMI(user.currentWeight, user.height);
-  const bmiCategory = getBMICategory(bmi);
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
 
-  const dailyCalories = getDailyCalorieGoal(
-    user.age,
-    user.gender,
-    user.currentWeight,
-    user.height,
-    user.goal
-  );
+    if (!korisnickoIme) {
+      return;
+    }
 
-  const handleSave = () => {
-    updateUser({
-      name: formData.name,
-      age: parseInt(formData.age),
-      height: parseFloat(formData.height),
-      goalWeight: parseFloat(formData.goalWeight),
-      goal: formData.goal as 'loss' | 'gain' | 'maintenance',
-    });
+    const response = await fetch(`${API_URL}/profil/${korisnickoIme}`);
+    const data = await response.json();
 
-    setIsEditing(false);
-    Alert.alert('Uspjeh', 'Profil je ažuriran');
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    setFormData({
-      name: user.name,
-      age: user.age.toString(),
-      height: user.height.toString(),
-      goalWeight: user.goalWeight.toString(),
-      goal: user.goal,
-    });
+    if (response.ok) {
+      setProfil(data);
+    }
   };
 
   const handleLogout = () => {
@@ -79,26 +69,38 @@ export const ProfileScreen: React.FC = () => {
       {
         text: 'Logout',
         style: 'destructive',
-        onPress: () => {
-          logout();
+        onPress: async () => {
+          await AsyncStorage.removeItem('korisnickoIme');
+          await AsyncStorage.removeItem('user');
+          await AsyncStorage.removeItem('profil');
           router.replace('/');
         },
       },
     ]);
   };
 
+  const bmi =
+    profil ? calculateBMI(profil.trenutnaTezina, profil.visina) : '--';
+
+  const bmiCategory =
+    profil ? getBMICategory(Number(bmi)) : '--';
+
+  const dailyCalories =
+    profil
+      ? getDailyCalorieGoal(
+          profil.dob,
+          profil.spol,
+          profil.trenutnaTezina,
+          profil.visina,
+          profil.cilj
+        )
+      : '--';
+
   return (
     <View style={styles.root}>
       <LinearGradient colors={['#06b6d4', '#10b981']} style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>Profile</Text>
-
-          {!isEditing && (
-            <Pressable style={styles.editButton} onPress={() => setIsEditing(true)}>
-              <MaterialCommunityIcons name="pencil-outline" size={17} color="white" />
-              <Text style={styles.editText}>Edit</Text>
-            </Pressable>
-          )}
         </View>
 
         <View style={styles.profileRow}>
@@ -107,8 +109,12 @@ export const ProfileScreen: React.FC = () => {
           </View>
 
           <View>
-            <Text style={styles.nameText}>{user.name}</Text>
-            <Text style={styles.emailText}>{user.email}</Text>
+            <Text style={styles.nameText}>
+              {user ? `${user.ime} ${user.prezime}` : 'User'}
+            </Text>
+            <Text style={styles.emailText}>
+              {user?.mail || user?.korisnickoIme || ''}
+            </Text>
           </View>
         </View>
       </LinearGradient>
@@ -117,102 +123,32 @@ export const ProfileScreen: React.FC = () => {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Personal Information</Text>
 
-          {isEditing ? (
-            <>
-              <Text style={styles.label}>Name</Text>
-              <TextInput
-                value={formData.name}
-                onChangeText={(value) => setFormData({ ...formData, name: value })}
-                style={styles.input}
-              />
-
-              <Text style={styles.label}>Age</Text>
-              <TextInput
-                value={formData.age}
-                onChangeText={(value) => setFormData({ ...formData, age: value })}
-                keyboardType="numeric"
-                style={styles.input}
-              />
-
-              <Text style={styles.label}>Height (cm)</Text>
-              <TextInput
-                value={formData.height}
-                onChangeText={(value) => setFormData({ ...formData, height: value })}
-                keyboardType="numeric"
-                style={styles.input}
-              />
-
-              <Text style={styles.label}>Goal Weight (kg)</Text>
-              <TextInput
-                value={formData.goalWeight}
-                onChangeText={(value) => setFormData({ ...formData, goalWeight: value })}
-                keyboardType="numeric"
-                style={styles.input}
-              />
-
-              <Text style={styles.label}>Goal</Text>
-              <View style={styles.goalColumn}>
-                {[
-                  { value: 'loss', label: 'Weight Loss' },
-                  { value: 'gain', label: 'Weight Gain' },
-                  { value: 'maintenance', label: 'Maintain Weight' },
-                ].map((item) => (
-                  <Pressable
-                    key={item.value}
-                    onPress={() => setFormData({ ...formData, goal: item.value as 'loss' | 'gain' | 'maintenance' })}
-                    style={[
-                      styles.goalButton,
-                      formData.goal === item.value && styles.goalButtonActive,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.goalText,
-                        formData.goal === item.value && styles.goalTextActive,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              <View style={styles.buttonRow}>
-                <Pressable style={styles.cancelButton} onPress={handleCancel}>
-                  <Text style={styles.cancelText}>Cancel</Text>
-                </Pressable>
-
-                <Pressable style={styles.saveWrapper} onPress={handleSave}>
-                  <LinearGradient colors={['#06b6d4', '#10b981']} style={styles.saveButton}>
-                    <MaterialCommunityIcons name="content-save-outline" size={19} color="white" />
-                    <Text style={styles.saveText}>Save</Text>
-                  </LinearGradient>
-                </Pressable>
-              </View>
-            </>
-          ) : (
+          {profil ? (
             <View style={styles.infoGrid}>
-              <InfoBox icon="account-outline" label="Age" value={`${user.age} years`} />
-              <InfoBox icon="account-outline" label="Gender" value={user.gender} />
-              <InfoBox icon="ruler" label="Height" value={`${user.height} cm`} />
-              <InfoBox icon="scale-bathroom" label="Current" value={`${user.currentWeight} kg`} />
-              <InfoBox icon="target" label="Goal Weight" value={`${user.goalWeight} kg`} />
+              <InfoBox icon="account-outline" label="Age" value={`${profil.dob} years`} />
+              <InfoBox icon="account-outline" label="Gender" value={profil.spol} />
+              <InfoBox icon="ruler" label="Height" value={`${profil.visina} cm`} />
+              <InfoBox icon="scale-bathroom" label="Current" value={`${profil.trenutnaTezina} kg`} />
               <InfoBox
                 icon="target"
                 label="Goal"
                 value={
-                  user.goal === 'loss'
+                  profil.cilj === 'loss'
                     ? 'Weight Loss'
-                    : user.goal === 'gain'
+                    : profil.cilj === 'gain'
                       ? 'Weight Gain'
                       : 'Maintain'
                 }
               />
             </View>
+          ) : (
+            <Text style={styles.emptyText}>
+              Profile data not found. Complete onboarding first.
+            </Text>
           )}
         </View>
 
-        {!isEditing && (
+        {profil && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Health Metrics</Text>
 
@@ -232,28 +168,13 @@ export const ProfileScreen: React.FC = () => {
           </View>
         )}
 
-        {!isEditing && (
-          <Pressable style={styles.logoutButton} onPress={handleLogout}>
-            <MaterialCommunityIcons name="logout" size={20} color="#dc2626" />
-            <Text style={styles.logoutText}>Logout</Text>
-          </Pressable>
-        )}
+        <Pressable style={styles.logoutButton} onPress={handleLogout}>
+          <MaterialCommunityIcons name="logout" size={20} color="#dc2626" />
+          <Text style={styles.logoutText}>Logout</Text>
+        </Pressable>
       </ScrollView>
 
-      <View style={styles.bottomNav}>
-        <Pressable onPress={() => router.push('/dashboard')}>
-          <MaterialCommunityIcons name="home" size={26} color="#64748b" />
-        </Pressable>
-        <Pressable onPress={() => router.push('/activity')}>
-          <MaterialCommunityIcons name="run" size={26} color="#64748b" />
-        </Pressable>
-        <Pressable onPress={() => router.push('/weight')}>
-          <MaterialCommunityIcons name="scale-bathroom" size={26} color="#64748b" />
-        </Pressable>
-        <Pressable onPress={() => router.push('/profile')}>
-          <MaterialCommunityIcons name="account" size={26} color="#06b6d4" />
-        </Pressable>
-      </View>
+      <BottomNav />
     </View>
   );
 };
@@ -300,19 +221,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: 'white',
   },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-  },
-  editText: {
-    color: 'white',
-    fontWeight: '700',
-  },
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -337,7 +245,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 95,
+    paddingBottom: 120,
     gap: 14,
   },
   card: {
@@ -354,76 +262,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1f2937',
     marginBottom: 16,
-  },
-  label: {
-    color: '#374151',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    fontSize: 16,
-    backgroundColor: 'white',
-    marginBottom: 14,
-  },
-  goalColumn: {
-    gap: 10,
-    marginBottom: 16,
-  },
-  goalButton: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  goalButtonActive: {
-    borderColor: '#06b6d4',
-    backgroundColor: '#ecfeff',
-  },
-  goalText: {
-    color: '#374151',
-    fontWeight: '600',
-  },
-  goalTextActive: {
-    color: '#0891b2',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    height: 50,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelText: {
-    color: '#374151',
-    fontWeight: '700',
-  },
-  saveWrapper: {
-    flex: 1,
-  },
-  saveButton: {
-    height: 50,
-    borderRadius: 10,
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveText: {
-    color: 'white',
-    fontWeight: '700',
   },
   infoGrid: {
     flexDirection: 'row',
@@ -504,22 +342,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 16,
   },
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'white',
-    paddingVertical: 16,
-    paddingHorizontal: 34,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  emptyText: {
+    color: '#64748b',
+    fontSize: 14,
   },
 });

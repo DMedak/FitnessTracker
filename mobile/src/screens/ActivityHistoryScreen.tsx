@@ -8,30 +8,66 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useApp } from '../contexts/AppContext';
-import { formatDate, formatTime } from '../utils/calculations';
+import { formatDate } from '../utils/calculations';
+import { BottomNav } from '../components/BottomNav';
+import { API_URL } from '../config/api';
+
+type Aktivnost = {
+  korisnickoIme: string;
+  datumAktivnosti: string;
+  vrstaAktivnosti: string;
+  trajanje: number;
+  potrosnjaKalorija: number;
+  napomena?: string;
+};
 
 export const ActivityHistoryScreen: React.FC = () => {
-  const { activities, removeActivity } = useApp();
+  const [activities, setActivities] = React.useState<Aktivnost[]>([]);
+
+  React.useEffect(() => {
+    loadAktivnosti();
+  }, []);
+
+  const loadAktivnosti = async () => {
+    try {
+      const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
+
+      if (!korisnickoIme) {
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/aktivnost/${korisnickoIme}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setActivities(data);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   const sortedActivities = [...activities].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    (a, b) =>
+      new Date(b.datumAktivnosti).getTime() -
+      new Date(a.datumAktivnosti).getTime()
   );
 
-  const totalCalories = activities.reduce((sum, a) => sum + a.caloriesBurned, 0);
-  const totalDuration = activities.reduce((sum, a) => sum + a.duration, 0);
+  const totalCalories = activities.reduce(
+    (sum, a) => sum + Number(a.potrosnjaKalorija),
+    0
+  );
 
-  const handleDelete = (id: string) => {
-    Alert.alert('Delete activity', 'Are you sure you want to delete this activity?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => removeActivity(id),
-      },
-    ]);
+  const totalDuration = activities.reduce(
+    (sum, a) => sum + Number(a.trajanje),
+    0
+  );
+
+  const handleDelete = () => {
+    Alert.alert('Info', 'Delete endpoint još nije napravljen na backendu');
   };
 
   return (
@@ -78,29 +114,34 @@ export const ActivityHistoryScreen: React.FC = () => {
         ) : (
           <View style={styles.list}>
             {sortedActivities.map((activity) => (
-              <View key={activity.id} style={styles.card}>
+              <View
+                key={`${activity.korisnickoIme}-${activity.datumAktivnosti}-${activity.vrstaAktivnosti}`}
+                style={styles.card}
+              >
                 <View style={styles.row}>
                   <View style={styles.entryContent}>
-                    <Text style={styles.activityTitle}>{activity.type}</Text>
+                    <Text style={styles.activityTitle}>
+                      {activity.vrstaAktivnosti}
+                    </Text>
 
                     <View style={styles.metaRow}>
                       <View style={styles.metaItem}>
                         <MaterialCommunityIcons name="clock-outline" size={17} color="#64748b" />
-                        <Text style={styles.metaText}>{activity.duration} min</Text>
+                        <Text style={styles.metaText}>{activity.trajanje} min</Text>
                       </View>
 
                       <View style={styles.metaItem}>
                         <MaterialCommunityIcons name="fire" size={17} color="#f97316" />
-                        <Text style={styles.metaText}>{activity.caloriesBurned} kcal</Text>
+                        <Text style={styles.metaText}>{activity.potrosnjaKalorija} kcal</Text>
                       </View>
                     </View>
 
                     <Text style={styles.dateText}>
-                      {formatDate(activity.date)} • {formatTime(activity.date)}
+                      {formatDate(activity.datumAktivnosti)}
                     </Text>
                   </View>
 
-                  <Pressable style={styles.deleteButton} onPress={() => handleDelete(activity.id)}>
+                  <Pressable style={styles.deleteButton} onPress={handleDelete}>
                     <MaterialCommunityIcons name="trash-can-outline" size={22} color="#ef4444" />
                   </Pressable>
                 </View>
@@ -110,20 +151,7 @@ export const ActivityHistoryScreen: React.FC = () => {
         )}
       </ScrollView>
 
-      <View style={styles.bottomNav}>
-        <Pressable onPress={() => router.push('/dashboard')}>
-          <MaterialCommunityIcons name="home" size={26} color="#64748b" />
-        </Pressable>
-        <Pressable onPress={() => router.push('/activity')}>
-          <MaterialCommunityIcons name="run" size={26} color="#06b6d4" />
-        </Pressable>
-        <Pressable onPress={() => router.push('/weight')}>
-          <MaterialCommunityIcons name="scale-bathroom" size={26} color="#64748b" />
-        </Pressable>
-        <Pressable onPress={() => router.push('/profile')}>
-          <MaterialCommunityIcons name="account" size={26} color="#64748b" />
-        </Pressable>
-      </View>
+      <BottomNav />
     </View>
   );
 };
@@ -150,7 +178,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 95,
+    paddingBottom: 120,
     gap: 14,
   },
   statsRow: {
@@ -261,18 +289,5 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: 8,
     borderRadius: 10,
-  },
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'white',
-    paddingVertical: 16,
-    paddingHorizontal: 34,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
 });

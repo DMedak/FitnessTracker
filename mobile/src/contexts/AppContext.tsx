@@ -4,6 +4,7 @@ type Goal = 'loss' | 'gain' | 'maintenance';
 type Gender = 'male' | 'female' | 'other';
 
 type User = {
+  korisnickoIme: string;
   name: string;
   email: string;
   age: number;
@@ -52,6 +53,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>({
+    korisnickoIme: 'test',
     name: 'Test User',
     email: 'test@test.com',
     age: 25,
@@ -71,6 +73,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (name: string, email: string) => {
     setUser({
+      korisnickoIme: name,
       name,
       email,
       age: 25,

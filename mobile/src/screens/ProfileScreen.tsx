@@ -18,6 +18,10 @@ import {
 } from '../utils/calculations';
 import { BottomNav } from '../components/BottomNav';
 import { API_URL } from '../config/api';
+import { Asset } from 'expo-asset';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as IntentLauncher from 'expo-intent-launcher';
+
 
 type UserData = {
   korisnickoIme: string;
@@ -77,6 +81,32 @@ export const ProfileScreen: React.FC = () => {
         },
       },
     ]);
+  };
+
+  const openHelpPdf = async () => {
+    try {
+      const asset = Asset.fromModule(require('../../assets/images/Help.pdf'));
+      await asset.downloadAsync();
+
+      const fromUri = asset.localUri || asset.uri;
+      const fileUri = `${FileSystem.cacheDirectory}Help.pdf`;
+
+      await FileSystem.copyAsync({
+        from: fromUri,
+        to: fileUri,
+      });
+
+      const contentUri = await FileSystem.getContentUriAsync(fileUri);
+
+      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+        data: contentUri,
+        type: 'application/pdf',
+        flags: 1,
+      });
+    } catch (error) {
+      console.log(error);
+      Alert.alert('Error', 'Help document could not be opened.');
+    }
   };
 
   const bmi =
@@ -167,6 +197,11 @@ export const ProfileScreen: React.FC = () => {
             </View>
           </View>
         )}
+
+        <Pressable style={styles.helpButton} onPress={openHelpPdf}>
+          <MaterialCommunityIcons name="file-document-outline" size={20} color="#0891b2" />
+          <Text style={styles.helpText}>Open Help Guide</Text>
+        </Pressable>
 
         <Pressable style={styles.logoutButton} onPress={handleLogout}>
           <MaterialCommunityIcons name="logout" size={20} color="#dc2626" />
@@ -346,4 +381,20 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 14,
   },
+  helpButton: {
+  height: 50,
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#a5f3fc',
+  backgroundColor: 'white',
+  flexDirection: 'row',
+  gap: 8,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+helpText: {
+  color: '#0891b2',
+  fontWeight: '700',
+  fontSize: 16,
+},
 });

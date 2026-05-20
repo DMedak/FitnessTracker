@@ -12,7 +12,7 @@ npm install
 
 ## 3. Pokretanje servera
 ```bash
-npx nodemon src/server.js
+npx node src/server.js
 ```
 
 ## 🌐 Backend URL

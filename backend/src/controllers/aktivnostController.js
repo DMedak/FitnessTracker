@@ -21,12 +21,12 @@ const createAktivnost = async (req, res) => {
     });
 
     return res.status(201).json({
-      message: 'Aktivnost uspješno spremljena.',
+      message: 'Activity saved successfully.',
       aktivnost,
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Greška kod spremanja aktivnosti.',
+      message: 'Error occurred while saving activity.',
       error: error.message,
     });
   }
@@ -44,7 +44,7 @@ const getAktivnostiByKorisnik = async (req, res) => {
     return res.json(aktivnosti);
   } catch (error) {
     return res.status(500).json({
-      message: 'Greška kod dohvaćanja aktivnosti.',
+      message: 'Error occurred while fetching activities.',
       error: error.message,
     });
   }

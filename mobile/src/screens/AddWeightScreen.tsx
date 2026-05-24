@@ -16,52 +16,57 @@ import { BottomNav } from '../components/BottomNav';
 import { API_URL } from '../config/api';
 
 export const AddWeightScreen: React.FC = () => {
-
   const [weight, setWeight] = useState('');
   const [note, setNote] = useState('');
 
   const handleSubmit = async () => {
-  try {
-    if (!weight || parseFloat(weight) <= 0) {
-      Alert.alert('Error', 'Enter valid weight');
-      return;
+    try {
+      const normalizedWeight = weight.replace(',', '.');
+      const parsedWeight = parseFloat(normalizedWeight);
+
+      if (!weight.trim() || Number.isNaN(parsedWeight) || parsedWeight <= 0) {
+        Alert.alert('Error', 'Please enter a valid weight.');
+        return;
+      }
+
+      const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
+
+      if (!korisnickoIme) {
+        Alert.alert('Error', 'User not found');
+        return;
+      }
+
+      const body = {
+        korisnickoIme,
+        datumUnosa: new Date().toISOString().split('T')[0],
+        tezina: parsedWeight,
+        napomena: note,
+      };
+
+      const response = await fetch(`${API_URL}/tezina`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        Alert.alert(
+          'Daily entry already exists',
+          result.message || 'You can enter your weight only once per day.'
+        );
+        return;
+      }
+
+      Alert.alert('Success', 'Weight saved');
+      router.replace('/weight');
+    } catch (error) {
+      Alert.alert('Error', 'Saving failed');
     }
-
-    const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
-
-    if (!korisnickoIme) {
-      Alert.alert('Error', 'User not found');
-      return;
-    }
-
-    const body = {
-      korisnickoIme,
-      datumUnosa: new Date().toISOString().split('T')[0],
-      tezina: parseFloat(weight),
-      napomena: note,
-    };
-
-    const response = await fetch(`${API_URL}/tezina`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      Alert.alert('Error', result.message || 'Saving failed');
-      return;
-    }
-
-    Alert.alert('Success', 'Weight saved');
-    router.replace('/weight');
-  } catch (error) {
-    Alert.alert('Error', 'Saving failed');
-  }
-};
+  };
 
   return (
     <View style={styles.root}>
@@ -90,7 +95,7 @@ export const AddWeightScreen: React.FC = () => {
             value={weight}
             onChangeText={setWeight}
             placeholder="70.5"
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             style={styles.input}
           />
 
@@ -120,11 +125,12 @@ export const AddWeightScreen: React.FC = () => {
 
         <View style={styles.tipBox}>
           <Text style={styles.tipText}>
-            <Text style={styles.tipBold}>Tip:</Text> Weigh yourself at the same time each day
-            (preferably in the morning) for consistent tracking.
+            <Text style={styles.tipBold}>Tip:</Text> Weight can be entered once per day.
+            For consistent tracking, weigh yourself at the same time each day.
           </Text>
         </View>
       </ScrollView>
+
       <BottomNav />
     </View>
   );
@@ -199,14 +205,15 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   textArea: {
-    minHeight: 96,
+    height: 120,
     textAlignVertical: 'top',
     paddingTop: 12,
+    marginBottom: 28,
   },
   buttonRow: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 4,
+    marginTop: 5,
   },
   cancelButton: {
     flex: 1,

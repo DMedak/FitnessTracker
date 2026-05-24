@@ -12,12 +12,12 @@ const createOrUpdateMetrika = async (req, res) => {
     });
 
     return res.status(created ? 201 : 200).json({
-      message: created ? 'Metrika uspješno kreirana.' : 'Metrika uspješno ažurirana.',
+      message: created ? 'Metrics created successfully.' : 'Metrics updated successfully.',
       metrika,
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Greška kod spremanja metrike.',
+      message: 'Error occurred while saving/updating metrics.',
       error: error.message,
     });
   }
@@ -30,13 +30,13 @@ const getMetrikaByKorisnik = async (req, res) => {
     const metrika = await TjelesnaMetrika.findByPk(korisnickoIme);
 
     if (!metrika) {
-      return res.status(404).json({ message: 'Metrika nije pronađena.' });
+      return res.status(404).json({ message: 'Metrics not found.' });
     }
 
     return res.json(metrika);
   } catch (error) {
     return res.status(500).json({
-      message: 'Greška kod dohvaćanja metrike.',
+      message: 'Error occurred while fetching metrics.',
       error: error.message,
     });
   }

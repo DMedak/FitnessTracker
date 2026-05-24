@@ -35,22 +35,66 @@ const activityTypes = [
   'Boxing',
 ];
 
-export const AddActivityScreen: React.FC = () => {
+type Tezina = {
+  datumUnosa?: string;
+  datum_unosa?: string;
+  tezina: number | string;
+};
 
+export const AddActivityScreen: React.FC = () => {
   const [activityType, setActivityType] = useState('');
   const [duration, setDuration] = useState('');
   const [estimatedCalories, setEstimatedCalories] = useState(0);
 
-  const calculateCalories = (type: string, minutes: string) => {
-    if (!type || !minutes) {
+  const getCurrentWeight = async () => {
+    const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
+
+    if (!korisnickoIme) {
+      return 70;
+    }
+
+    const weightResponse = await fetch(`${API_URL}/tezina/${korisnickoIme}`);
+    const weightData = await weightResponse.json();
+
+    if (weightResponse.ok && Array.isArray(weightData) && weightData.length > 0) {
+      const sortedWeights = [...weightData].sort((a: Tezina, b: Tezina) => {
+        const dateA = new Date(a.datumUnosa || a.datum_unosa || '').getTime();
+        const dateB = new Date(b.datumUnosa || b.datum_unosa || '').getTime();
+
+        return dateB - dateA;
+      });
+
+      const latestWeight = Number(sortedWeights[0].tezina);
+
+      if (!Number.isNaN(latestWeight)) {
+        return latestWeight;
+      }
+    }
+
+    const profileResponse = await fetch(`${API_URL}/profil/${korisnickoIme}`);
+    const profileData = await profileResponse.json();
+
+    if (profileResponse.ok && profileData?.trenutnaTezina) {
+      return Number(profileData.trenutnaTezina);
+    }
+
+    return 70;
+  };
+
+  const calculateCalories = async (type: string, minutes: string) => {
+    const parsedMinutes = parseFloat(minutes);
+
+    if (!type || !minutes || Number.isNaN(parsedMinutes) || parsedMinutes <= 0) {
       setEstimatedCalories(0);
       return;
     }
 
+    const currentWeight = await getCurrentWeight();
+
     const calories = calculateCaloriesBurned(
       type,
-      parseFloat(minutes),
-      70
+      parsedMinutes,
+      currentWeight
     );
 
     setEstimatedCalories(calories);
@@ -67,49 +111,51 @@ export const AddActivityScreen: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-  try {
-    if (!activityType || !duration || parseFloat(duration) <= 0) {
-      Alert.alert('Error', 'Fill in all required fields');
-      return;
+    try {
+      const parsedDuration = parseFloat(duration);
+
+      if (!activityType || !duration || Number.isNaN(parsedDuration) || parsedDuration <= 0) {
+        Alert.alert('Error', 'Fill in all required fields');
+        return;
+      }
+
+      const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
+
+      if (!korisnickoIme) {
+        Alert.alert('Error', 'User not found');
+        return;
+      }
+
+      const body = {
+        korisnickoIme,
+        datumAktivnosti: new Date().toLocaleDateString('en-CA'),
+        vrstaAktivnosti: activityType,
+        trajanje: Math.round(parsedDuration),
+        potrosnjaKalorija: estimatedCalories,
+        napomena: '',
+      };
+
+      const response = await fetch(`${API_URL}/aktivnost`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        Alert.alert('Error', result.message || 'Saving failed');
+        return;
+      }
+
+      Alert.alert('Success', 'Activity saved');
+      router.replace('/activity');
+    } catch (error) {
+      Alert.alert('Error', 'Saving failed');
     }
-
-    const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
-
-    if (!korisnickoIme) {
-      Alert.alert('Error', 'User not found');
-      return;
-    }
-
-    const body = {
-      korisnickoIme,
-      datumAktivnosti: new Date().toISOString().split('T')[0],
-      vrstaAktivnosti: activityType,
-      trajanje: parseInt(duration),
-      potrosnjaKalorija: estimatedCalories,
-      napomena: '',
-    };
-
-    const response = await fetch(`${API_URL}/aktivnost`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      Alert.alert('Error', result.message || 'Saving failed');
-      return;
-    }
-
-    Alert.alert('Success', 'Activity saved');
-    router.replace('/activity');
-  } catch (error) {
-    Alert.alert('Error', 'Saving failed');
-  }
-};
+  };
 
   return (
     <View style={styles.root}>

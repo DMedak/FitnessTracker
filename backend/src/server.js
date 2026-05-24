@@ -19,20 +19,20 @@ app.use('/aktivnost', aktivnostRoutes);
 app.use('/metrika', metrikaRoutes);
 
 app.get('/', (req, res) => {
-  res.json({ message: 'API radi' });
+  res.json({ message: 'API is running' });
 });
 
 const PORT = process.env.PORT || 3000;
 
 sequelize.authenticate()
   .then(() => {
-    console.log('Baza spojena');
+    console.log('Database connected successfully.');
     app.listen(PORT, () => {
-      console.log(`Server radi na portu ${PORT}`);
+      console.log(`Server running on port ${PORT}`);
     });
   })
   .catch((err) => {
-    console.error('Greška spajanja baze:', err);
+    console.error('Error connecting to the database:', err);
   });
 
 PodaciZaPrijavu.findAll()

@@ -12,12 +12,12 @@ const createTezina = async (req, res) => {
     });
 
     return res.status(201).json({
-      message: 'Težina uspješno spremljena.',
+      message: 'Weight saved successfully.',
       zapis,
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Greška kod spremanja težine.',
+      message: 'Saving failed.',
       error: error.message,
     });
   }
@@ -35,7 +35,7 @@ const getTezineByKorisnik = async (req, res) => {
     return res.json(zapisi);
   } catch (error) {
     return res.status(500).json({
-      message: 'Greška kod dohvaćanja težina.',
+      message: 'Error occurred while fetching weights.',
       error: error.message,
     });
   }

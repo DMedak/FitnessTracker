@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -21,7 +21,6 @@ import { API_URL } from '../config/api';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
-
 
 type UserData = {
   korisnickoIme: string;
@@ -39,31 +38,70 @@ type ProfilData = {
   cilj: 'loss' | 'gain' | 'maintenance';
 };
 
+type TezinaData = {
+  datumUnosa?: string;
+  datum_unosa?: string;
+  tezina: number | string;
+};
+
 export const ProfileScreen: React.FC = () => {
   const [user, setUser] = useState<UserData | null>(null);
   const [profil, setProfil] = useState<ProfilData | null>(null);
+  const [currentWeight, setCurrentWeight] = useState<number | null>(null);
 
   useEffect(() => {
     loadProfile();
   }, []);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      loadProfile();
+    }, [])
+  );
+
   const loadProfile = async () => {
-    const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
-    const storedUser = await AsyncStorage.getItem('user');
+    try {
+      const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
+      const storedUser = await AsyncStorage.getItem('user');
 
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
 
-    if (!korisnickoIme) {
-      return;
-    }
+      if (!korisnickoIme) {
+        return;
+      }
 
-    const response = await fetch(`${API_URL}/profil/${korisnickoIme}`);
-    const data = await response.json();
+      const [profileResponse, weightResponse] = await Promise.all([
+        fetch(`${API_URL}/profil/${korisnickoIme}`),
+        fetch(`${API_URL}/tezina/${korisnickoIme}`),
+      ]);
 
-    if (response.ok) {
-      setProfil(data);
+      const profileData = await profileResponse.json();
+      const weightData = await weightResponse.json();
+
+      if (profileResponse.ok) {
+        setProfil(profileData);
+      }
+
+      if (weightResponse.ok && Array.isArray(weightData) && weightData.length > 0) {
+        const sortedWeights = [...weightData].sort((a: TezinaData, b: TezinaData) => {
+          const dateA = new Date(a.datumUnosa || a.datum_unosa || '').getTime();
+          const dateB = new Date(b.datumUnosa || b.datum_unosa || '').getTime();
+
+          return dateB - dateA;
+        });
+
+        const latestWeight = Number(sortedWeights[0].tezina);
+
+        if (!Number.isNaN(latestWeight)) {
+          setCurrentWeight(latestWeight);
+        }
+      } else {
+        setCurrentWeight(null);
+      }
+    } catch (error) {
+      console.log(error);
     }
   };
 
@@ -109,18 +147,24 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
+  const displayedWeight = currentWeight ?? profil?.trenutnaTezina ?? null;
+
   const bmi =
-    profil ? calculateBMI(profil.trenutnaTezina, profil.visina) : '--';
+    profil && displayedWeight
+      ? calculateBMI(displayedWeight, profil.visina)
+      : '--';
 
   const bmiCategory =
-    profil ? getBMICategory(Number(bmi)) : '--';
+    profil && displayedWeight
+      ? getBMICategory(Number(bmi))
+      : '--';
 
   const dailyCalories =
-    profil
+    profil && displayedWeight
       ? getDailyCalorieGoal(
           profil.dob,
           profil.spol,
-          profil.trenutnaTezina,
+          displayedWeight,
           profil.visina,
           profil.cilj
         )
@@ -158,7 +202,11 @@ export const ProfileScreen: React.FC = () => {
               <InfoBox icon="account-outline" label="Age" value={`${profil.dob} years`} />
               <InfoBox icon="account-outline" label="Gender" value={profil.spol} />
               <InfoBox icon="ruler" label="Height" value={`${profil.visina} cm`} />
-              <InfoBox icon="scale-bathroom" label="Current" value={`${profil.trenutnaTezina} kg`} />
+              <InfoBox
+                icon="scale-bathroom"
+                label="Current"
+                value={displayedWeight ? `${displayedWeight} kg` : '-- kg'}
+              />
               <InfoBox
                 icon="target"
                 label="Goal"
@@ -382,19 +430,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   helpButton: {
-  height: 50,
-  borderRadius: 12,
-  borderWidth: 1,
-  borderColor: '#a5f3fc',
-  backgroundColor: 'white',
-  flexDirection: 'row',
-  gap: 8,
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-helpText: {
-  color: '#0891b2',
-  fontWeight: '700',
-  fontSize: 16,
-},
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#a5f3fc',
+    backgroundColor: 'white',
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helpText: {
+    color: '#0891b2',
+    fontWeight: '700',
+    fontSize: 16,
+  },
 });

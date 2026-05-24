@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,18 +10,24 @@ import { API_URL } from '../config/api';
 const COLORS = ['#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 type Tezina = {
-  korisnickoIme: string;
-  datumUnosa: string;
-  tezina: number;
+  korisnickoIme?: string;
+  korisnicko_ime?: string;
+  datumUnosa?: string;
+  datum_unosa?: string;
+  tezina: number | string;
   napomena?: string;
 };
 
 type Aktivnost = {
-  korisnickoIme: string;
-  datumAktivnosti: string;
-  vrstaAktivnosti: string;
-  trajanje: number;
-  potrosnjaKalorija: number;
+  korisnickoIme?: string;
+  korisnicko_ime?: string;
+  datumAktivnosti?: string;
+  datum_aktivnosti?: string;
+  vrstaAktivnosti?: string;
+  vrsta_aktivnosti?: string;
+  trajanje: number | string;
+  potrosnjaKalorija?: number | string;
+  potrosnja_kalorija?: number | string;
   napomena?: string;
 };
 
@@ -31,6 +38,18 @@ export const ProgressScreen: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadData();
+    }, [])
+  );
+
+  const getWeightDate = (item: Tezina) => item.datumUnosa || item.datum_unosa || '';
+  const getActivityDate = (item: Aktivnost) => item.datumAktivnosti || item.datum_aktivnosti || '';
+  const getActivityType = (item: Aktivnost) => item.vrstaAktivnosti || item.vrsta_aktivnosti || 'Unknown';
+  const getActivityCalories = (item: Aktivnost) =>
+    Number(item.potrosnjaKalorija || item.potrosnja_kalorija || 0);
 
   const loadData = async () => {
     try {
@@ -48,11 +67,11 @@ export const ProgressScreen: React.FC = () => {
       const weightData = await weightResponse.json();
       const activityData = await activityResponse.json();
 
-      if (weightResponse.ok) {
+      if (weightResponse.ok && Array.isArray(weightData)) {
         setWeights(weightData);
       }
 
-      if (activityResponse.ok) {
+      if (activityResponse.ok && Array.isArray(activityData)) {
         setActivities(activityData);
       }
     } catch (error) {
@@ -64,11 +83,11 @@ export const ProgressScreen: React.FC = () => {
     return [...weights]
       .sort(
         (a, b) =>
-          new Date(a.datumUnosa).getTime() -
-          new Date(b.datumUnosa).getTime()
+          new Date(getWeightDate(a)).getTime() -
+          new Date(getWeightDate(b)).getTime()
       )
       .map((w) => ({
-        date: new Date(w.datumUnosa).toLocaleDateString(),
+        date: new Date(getWeightDate(w)).toLocaleDateString(),
         weight: Number(w.tezina),
       }));
   }, [weights]);
@@ -81,13 +100,13 @@ export const ProgressScreen: React.FC = () => {
       date.setDate(date.getDate() - (6 - i));
 
       const dayActivities = activities.filter(
-        (a) => new Date(a.datumAktivnosti).toDateString() === date.toDateString()
+        (a) => new Date(getActivityDate(a)).toDateString() === date.toDateString()
       );
 
       return {
         day: date.toLocaleDateString('en-US', { weekday: 'short' }),
         calories: dayActivities.reduce(
-          (sum, a) => sum + Number(a.potrosnjaKalorija),
+          (sum, a) => sum + getActivityCalories(a),
           0
         ),
         duration: dayActivities.reduce(
@@ -102,9 +121,11 @@ export const ProgressScreen: React.FC = () => {
     const typeMap = new Map<string, number>();
 
     activities.forEach((a) => {
+      const activityType = getActivityType(a);
+
       typeMap.set(
-        a.vrstaAktivnosti,
-        (typeMap.get(a.vrstaAktivnosti) || 0) + Number(a.trajanje)
+        activityType,
+        (typeMap.get(activityType) || 0) + Number(a.trajanje)
       );
     });
 
@@ -119,8 +140,8 @@ export const ProgressScreen: React.FC = () => {
 
     const sorted = [...weights].sort(
       (a, b) =>
-        new Date(a.datumUnosa).getTime() -
-        new Date(b.datumUnosa).getTime()
+        new Date(getWeightDate(a)).getTime() -
+        new Date(getWeightDate(b)).getTime()
     );
 
     const first = Number(sorted[0].tezina);
@@ -134,7 +155,7 @@ export const ProgressScreen: React.FC = () => {
   const totalActivities = activities.length;
 
   const totalCalories = activities.reduce(
-    (sum, a) => sum + Number(a.potrosnjaKalorija),
+    (sum, a) => sum + getActivityCalories(a),
     0
   );
 

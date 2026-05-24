@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -16,20 +16,35 @@ import { BottomNav } from '../components/BottomNav';
 import { API_URL } from '../config/api';
 
 type Aktivnost = {
-  korisnickoIme: string;
-  datumAktivnosti: string;
-  vrstaAktivnosti: string;
-  trajanje: number;
-  potrosnjaKalorija: number;
+  korisnickoIme?: string;
+  korisnicko_ime?: string;
+  datumAktivnosti?: string;
+  datum_aktivnosti?: string;
+  vrstaAktivnosti?: string;
+  vrsta_aktivnosti?: string;
+  trajanje: number | string;
+  potrosnjaKalorija?: number | string;
+  potrosnja_kalorija?: number | string;
   napomena?: string;
 };
 
 export const ActivityHistoryScreen: React.FC = () => {
   const [activities, setActivities] = React.useState<Aktivnost[]>([]);
 
-  React.useEffect(() => {
-    loadAktivnosti();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadAktivnosti();
+    }, [])
+  );
+
+  const getActivityDate = (activity: Aktivnost) =>
+    activity.datumAktivnosti || activity.datum_aktivnosti || '';
+
+  const getActivityType = (activity: Aktivnost) =>
+    activity.vrstaAktivnosti || activity.vrsta_aktivnosti || 'Unknown';
+
+  const getActivityCalories = (activity: Aktivnost) =>
+    Number(activity.potrosnjaKalorija || activity.potrosnja_kalorija || 0);
 
   const loadAktivnosti = async () => {
     try {
@@ -42,7 +57,7 @@ export const ActivityHistoryScreen: React.FC = () => {
       const response = await fetch(`${API_URL}/aktivnost/${korisnickoIme}`);
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && Array.isArray(data)) {
         setActivities(data);
       }
     } catch (error) {
@@ -52,14 +67,20 @@ export const ActivityHistoryScreen: React.FC = () => {
 
   const sortedActivities = [...activities].sort(
     (a, b) =>
-      new Date(b.datumAktivnosti).getTime() -
-      new Date(a.datumAktivnosti).getTime()
+      new Date(getActivityDate(b)).getTime() -
+      new Date(getActivityDate(a)).getTime()
   );
 
   const totalCalories = activities.reduce(
-    (sum, a) => sum + Number(a.potrosnjaKalorija),
+    (sum, a) => sum + getActivityCalories(a),
     0
   );
+
+  const today = new Date().toLocaleDateString('en-CA');
+
+  const todayCalories = activities
+    .filter((a) => getActivityDate(a) === today)
+    .reduce((sum, a) => sum + getActivityCalories(a), 0);
 
   const totalDuration = activities.reduce(
     (sum, a) => sum + Number(a.trajanje),
@@ -84,6 +105,12 @@ export const ActivityHistoryScreen: React.FC = () => {
               <MaterialCommunityIcons name="fire" size={28} color="white" />
               <Text style={styles.statNumber}>{totalCalories}</Text>
               <Text style={styles.statLabel}>Total Calories</Text>
+            </LinearGradient>
+
+            <LinearGradient colors={['#06b6d4', '#0891b2']} style={styles.statCard}>
+              <MaterialCommunityIcons name="calendar-today" size={28} color="white" />
+              <Text style={styles.statNumber}>{todayCalories}</Text>
+              <Text style={styles.statLabel}>Today Calories</Text>
             </LinearGradient>
 
             <LinearGradient colors={['#a855f7', '#ec4899']} style={styles.statCard}>
@@ -113,15 +140,15 @@ export const ActivityHistoryScreen: React.FC = () => {
           </View>
         ) : (
           <View style={styles.list}>
-            {sortedActivities.map((activity) => (
+            {sortedActivities.map((activity, index) => (
               <View
-                key={`${activity.korisnickoIme}-${activity.datumAktivnosti}-${activity.vrstaAktivnosti}`}
+                key={`${getActivityDate(activity)}-${getActivityType(activity)}-${index}`}
                 style={styles.card}
               >
                 <View style={styles.row}>
                   <View style={styles.entryContent}>
                     <Text style={styles.activityTitle}>
-                      {activity.vrstaAktivnosti}
+                      {getActivityType(activity)}
                     </Text>
 
                     <View style={styles.metaRow}>
@@ -132,12 +159,12 @@ export const ActivityHistoryScreen: React.FC = () => {
 
                       <View style={styles.metaItem}>
                         <MaterialCommunityIcons name="fire" size={17} color="#f97316" />
-                        <Text style={styles.metaText}>{activity.potrosnjaKalorija} kcal</Text>
+                        <Text style={styles.metaText}>{getActivityCalories(activity)} kcal</Text>
                       </View>
                     </View>
 
                     <Text style={styles.dateText}>
-                      {formatDate(activity.datumAktivnosti)}
+                      {formatDate(getActivityDate(activity))}
                     </Text>
                   </View>
 

@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -23,14 +23,32 @@ type Profil = {
   cilj: string;
 };
 
+type Tezina = {
+  id?: number;
+  korisnickoIme?: string;
+  korisnicko_ime?: string;
+  datumUnosa?: string;
+  datum_unosa?: string;
+  tezina: number | string;
+  napomena?: string;
+};
+
 export const DashboardScreen = () => {
   const [profil, setProfil] = useState<Profil | null>(null);
+  const [currentWeight, setCurrentWeight] = useState<number | null>(null);
+  const [todayCalories, setTodayCalories] = useState(0);
 
   useEffect(() => {
-    loadProfil();
+    loadDashboardData();
   }, []);
 
-  const loadProfil = async () => {
+  useFocusEffect(
+    React.useCallback(() => {
+      loadDashboardData();
+    }, [])
+  );
+
+  const loadDashboardData = async () => {
     try {
       const korisnickoIme = await AsyncStorage.getItem('korisnickoIme');
 
@@ -38,11 +56,52 @@ export const DashboardScreen = () => {
         return;
       }
 
-      const response = await fetch(`${API_URL}/profil/${korisnickoIme}`);
-      const data = await response.json();
+      const [profileResponse, weightResponse, activityResponse] = await Promise.all([
+        fetch(`${API_URL}/profil/${korisnickoIme}`),
+        fetch(`${API_URL}/tezina/${korisnickoIme}`),
+        fetch(`${API_URL}/aktivnost/${korisnickoIme}`),
+      ]);
 
-      if (response.ok) {
-        setProfil(data);
+      const profileData = await profileResponse.json();
+      const weightData = await weightResponse.json();
+      const activityData = await activityResponse.json();
+
+      if (profileResponse.ok) {
+        setProfil(profileData);
+      }
+
+      if (weightResponse.ok && Array.isArray(weightData) && weightData.length > 0) {
+        const sortedWeights = [...weightData].sort((a: Tezina, b: Tezina) => {
+          const dateA = new Date(a.datumUnosa || a.datum_unosa || '').getTime();
+          const dateB = new Date(b.datumUnosa || b.datum_unosa || '').getTime();
+
+          return dateB - dateA;
+        });
+
+        const latestWeight = Number(sortedWeights[0].tezina);
+
+        if (!Number.isNaN(latestWeight)) {
+          setCurrentWeight(latestWeight);
+        }
+      } else {
+        setCurrentWeight(null);
+      }
+
+      if (activityResponse.ok && Array.isArray(activityData)) {
+        const today = new Date().toLocaleDateString('en-CA');
+
+        const todayActivities = activityData.filter(
+          (item: any) =>
+            item.datumAktivnosti === today || item.datum_aktivnosti === today
+        );
+
+        const totalCalories = todayActivities.reduce(
+          (sum: number, item: any) =>
+            sum + Number(item.potrosnjaKalorija || item.potrosnja_kalorija || 0),
+          0
+        );
+
+        setTodayCalories(Math.round(totalCalories));
       }
     } catch (error) {
       // silent fail for dashboard
@@ -50,12 +109,12 @@ export const DashboardScreen = () => {
   };
 
   const calculateBMI = () => {
-    if (!profil?.visina || !profil?.trenutnaTezina) {
+    if (!profil?.visina || !currentWeight) {
       return '--';
     }
 
     const heightMeters = profil.visina / 100;
-    const bmi = profil.trenutnaTezina / (heightMeters * heightMeters);
+    const bmi = currentWeight / (heightMeters * heightMeters);
 
     return bmi.toFixed(1);
   };
@@ -107,18 +166,14 @@ export const DashboardScreen = () => {
                 <Text style={styles.smallText}>Current</Text>
 
                 <Text style={styles.bigText}>
-                  {profil?.trenutnaTezina
-                    ? `${profil.trenutnaTezina} kg`
-                    : '-- kg'}
+                  {currentWeight ? `${currentWeight} kg` : '-- kg'}
                 </Text>
               </View>
 
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={styles.smallText}>Goal</Text>
 
-                <Text style={styles.bigTextMuted}>
-                  {goalText()}
-                </Text>
+                <Text style={styles.bigTextMuted}>{goalText()}</Text>
               </View>
             </View>
 
@@ -133,7 +188,9 @@ export const DashboardScreen = () => {
               style={styles.statCard}
             >
               <MaterialCommunityIcons name="fire" size={30} color="white" />
-              <Text style={styles.statNumber}>0</Text>
+
+              <Text style={styles.statNumber}>{todayCalories}</Text>
+
               <Text style={styles.statLabel}>Calories Burned Today</Text>
             </LinearGradient>
 

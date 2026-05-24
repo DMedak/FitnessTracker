@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { formatDate } from '../utils/calculations';
 import { BottomNav } from '../components/BottomNav';
 import { API_URL } from '../config/api';
+import { useFocusEffect } from '@react-navigation/native';
 
 type Tezina = {
   korisnickoIme: string;
@@ -25,9 +26,11 @@ type Tezina = {
 export const WeightHistoryScreen: React.FC = () => {
   const [weights, setWeights] = React.useState<Tezina[]>([]);
 
-  React.useEffect(() => {
-    loadWeights();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadWeights();
+    }, [])
+  );
 
   const loadWeights = async () => {
     try {
@@ -64,6 +67,53 @@ export const WeightHistoryScreen: React.FC = () => {
         <Text style={styles.headerTitle}>Weight History</Text>
         <Text style={styles.headerSubtitle}>Track your weight over time</Text>
       </LinearGradient>
+
+      {sortedWeights.length > 0 && (() => {
+        const current = sortedWeights[0];
+        const previous = sortedWeights[1];
+
+        const diff = previous
+          ? Number(current.tezina) - Number(previous.tezina)
+          : 0;
+
+        return (
+          <View style={styles.currentCard}>
+            <Text style={styles.currentLabel}>Current Weight</Text>
+
+            <View style={styles.currentWeightRow}>
+              <Text style={styles.currentWeight}>
+                {current.tezina} kg
+              </Text>
+
+              {diff !== 0 && (
+                <View
+                  style={[
+                    styles.diffBadge,
+                    diff < 0 ? styles.diffGreen : styles.diffOrange,
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={diff < 0 ? 'trending-down' : 'trending-up'}
+                    size={14}
+                    color={diff < 0 ? '#15803d' : '#c2410c'}
+                  />
+
+                  <Text
+                    style={[
+                      styles.diffText,
+                      diff < 0
+                        ? styles.diffTextGreen
+                        : styles.diffTextOrange,
+                    ]}
+                  >
+                    {Math.abs(diff).toFixed(1)} kg
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        );
+      })()}
 
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable onPress={() => router.push('/add-weight')}>
@@ -102,29 +152,6 @@ export const WeightHistoryScreen: React.FC = () => {
                         <Text style={styles.weightText}>
                           {entry.tezina} kg
                         </Text>
-
-                        {diff !== 0 && (
-                          <View
-                            style={[
-                              styles.diffBadge,
-                              diff < 0 ? styles.diffGreen : styles.diffOrange,
-                            ]}
-                          >
-                            <MaterialCommunityIcons
-                              name={diff < 0 ? 'trending-down' : 'trending-up'}
-                              size={14}
-                              color={diff < 0 ? '#15803d' : '#c2410c'}
-                            />
-                            <Text
-                              style={[
-                                styles.diffText,
-                                diff < 0 ? styles.diffTextGreen : styles.diffTextOrange,
-                              ]}
-                            >
-                              {Math.abs(diff).toFixed(1)} kg
-                            </Text>
-                          </View>
-                        )}
                       </View>
 
                       <Text style={styles.dateText}>
@@ -242,6 +269,7 @@ const styles = StyleSheet.create({
   weightLine: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 10,
     marginBottom: 5,
   },
@@ -257,6 +285,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 999,
+    alignSelf: 'center',
   },
   diffGreen: {
     backgroundColor: '#dcfce7',
@@ -288,4 +317,26 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 10,
   },
+  currentCard: {
+  backgroundColor: 'white',
+  borderRadius: 16,
+  padding: 20,
+  alignItems: 'center',
+  elevation: 3,
+  },
+  currentLabel: {
+    color: '#64748b',
+    fontSize: 14,
+    marginBottom: 6,
+  },
+  currentWeight: {
+    color: '#111827',
+    fontSize: 34,
+    fontWeight: '700',
+  },
+  currentWeightRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10,
+},
 });

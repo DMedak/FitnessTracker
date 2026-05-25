@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { loginUser } from '../services/authService';
+import { Image } from 'react-native';
 
 export const LoginScreen = () => {
   const [korisnickoIme, setKorisnickoIme] = useState('');
@@ -69,14 +70,12 @@ export const LoginScreen = () => {
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={styles.container}>
             <View style={styles.header}>
-              <LinearGradient
-                colors={['#06b6d4', '#10b981']}
-                style={styles.logoBox}
-              >
-                <MaterialCommunityIcons name="run-fast" size={34} color="white" />
-              </LinearGradient>
+              <Image
+                source={require('../../assets/images/FitnessTrackerLogo.png')}
+                style={styles.logo}
+              />
 
-              <Text style={styles.title}>FitTrack</Text>
+              <Text style={styles.title}>FitnessTracker</Text>
               <Text style={styles.subtitle}>Track your fitness journey</Text>
             </View>
 
@@ -174,14 +173,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  logoBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
   title: {
     fontSize: 32,
     fontWeight: '700',
@@ -276,5 +267,11 @@ const styles = StyleSheet.create({
     color: '#0891b2',
     fontSize: 14,
     fontWeight: '700',
+  },
+  logo: {
+  width: 150,
+  height: 150,
+  resizeMode: 'contain',
+  marginBottom: 16,
   },
 });

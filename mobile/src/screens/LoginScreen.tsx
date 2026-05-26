@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 30,
   },
   title: {
     fontSize: 32,
@@ -269,9 +269,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   logo: {
-  width: 150,
-  height: 150,
+  width: 300,
+  height: 300,
   resizeMode: 'contain',
-  marginBottom: 16,
+  marginBottom: -75,
   },
 });

@@ -5,7 +5,16 @@ const register = async (req, res) => {
     const { korisnickoIme, ime, prezime, mail, lozinka } = req.body;
 
     if (!korisnickoIme || !ime || !prezime || !mail || !lozinka) {
-      return res.status(400).json({ message: 'Sva polja su obavezna.' });
+      return res.status(400).json({ message: 'All fields are required.' });
+    }
+
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
+
+    if (!passwordRegex.test(lozinka)) {
+      return res.status(400).json({
+        message:
+          'Password must be at least 6 characters and include one letter and one number.',
+      });
     }
 
     const postoji = await PodaciZaPrijavu.findOne({
@@ -13,7 +22,7 @@ const register = async (req, res) => {
     });
 
     if (postoji) {
-      return res.status(409).json({ message: 'Korisničko ime već postoji.' });
+      return res.status(409).json({ message: 'Username already exists.' });
     }
 
     const korisnik = await PodaciZaPrijavu.create({

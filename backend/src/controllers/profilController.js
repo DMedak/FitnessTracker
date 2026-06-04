@@ -48,7 +48,39 @@ const getProfil = async (req, res) => {
   }
 };
 
+const updateProfil = async (req, res) => {
+  try {
+    const { korisnickoIme } = req.params;
+    const { dob, spol, visina, trenutnaTezina, cilj } = req.body;
+
+    const profil = await KorisnickiProfil.findByPk(korisnickoIme);
+
+    if (!profil) {
+      return res.status(404).json({ message: 'Profile not found.' });
+    }
+
+    await profil.update({
+      dob,
+      spol,
+      visina,
+      trenutnaTezina,
+      cilj,
+    });
+
+    return res.json({
+      message: 'Profile updated successfully.',
+      profil,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error occurred while updating profile.',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createProfil,
   getProfil,
+  updateProfil,
 };

@@ -38,8 +38,12 @@ export const RegisterScreen: React.FC = () => {
       return;
     }
 
-    if (lozinka.length < 6) {
-      setError('Password must be at least 6 characters long');
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
+
+    if (!passwordRegex.test(lozinka)) {
+      setError(
+        'Password must be at least 6 characters and include one letter and one number'
+      );
       return;
     }
 
@@ -194,11 +198,14 @@ export const RegisterScreen: React.FC = () => {
                   <TextInput
                     value={lozinka}
                     onChangeText={setLozinka}
-                    placeholder="••••••••"
                     secureTextEntry
                     style={styles.input}
                   />
                 </View>
+
+                <Text style={styles.hintText}>
+                  Password must be at least 6 characters and include one letter and one number.
+                </Text>
               </View>
 
               <View style={styles.inputGroup}>
@@ -213,7 +220,6 @@ export const RegisterScreen: React.FC = () => {
                   <TextInput
                     value={confirmLozinka}
                     onChangeText={setConfirmLozinka}
-                    placeholder="••••••••"
                     secureTextEntry
                     style={styles.input}
                   />
@@ -331,6 +337,12 @@ const styles = StyleSheet.create({
     paddingRight: 14,
     fontSize: 16,
     backgroundColor: 'white',
+  },
+  hintText: {
+    color: '#64748b',
+    fontSize: 12,
+    marginTop: 6,
+    lineHeight: 17,
   },
   errorBox: {
     backgroundColor: '#fef2f2',

@@ -21,6 +21,8 @@ export const LoginScreen = () => {
   const [lozinka, setLozinka] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleLogin = async () => {
     setError('');
@@ -44,6 +46,8 @@ export const LoginScreen = () => {
       }
 
       await AsyncStorage.setItem('korisnickoIme', korisnickoIme);
+
+      await AsyncStorage.setItem('isLoggedIn', 'true');
 
       await AsyncStorage.setItem(
         'user',
@@ -104,6 +108,7 @@ export const LoginScreen = () => {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Password</Text>
+
                 <View style={styles.inputWrapper}>
                   <MaterialCommunityIcons
                     name="lock-outline"
@@ -111,13 +116,24 @@ export const LoginScreen = () => {
                     color="#94a3b8"
                     style={styles.icon}
                   />
+
                   <TextInput
                     value={lozinka}
                     onChangeText={setLozinka}
-                    placeholder="••••••••"
-                    secureTextEntry
+                    secureTextEntry={!showPassword}
                     style={styles.input}
                   />
+
+                  <Pressable
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeIcon}
+                  >
+                    <MaterialCommunityIcons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={22}
+                      color="#94a3b8"
+                    />
+                  </Pressable>
                 </View>
               </View>
 
@@ -228,7 +244,7 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     borderRadius: 10,
     paddingLeft: 46,
-    paddingRight: 14,
+    paddingRight: 46,
     fontSize: 16,
     backgroundColor: 'white',
   },
@@ -269,9 +285,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   logo: {
-  width: 300,
-  height: 300,
+  width: 280,
+  height: 280,
   resizeMode: 'contain',
   marginBottom: -75,
+  },
+  eyeIcon: {
+  position: 'absolute',
+  right: 14,
+  zIndex: 1,
   },
 });

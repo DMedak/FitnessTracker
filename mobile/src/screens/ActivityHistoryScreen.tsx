@@ -87,8 +87,42 @@ export const ActivityHistoryScreen: React.FC = () => {
     0
   );
 
-  const handleDelete = () => {
-    Alert.alert('Info', 'Delete endpoint još nije napravljen na backendu');
+  const handleDelete = async (activity: Aktivnost) => {
+    try {
+      const korisnickoIme =
+        activity.korisnickoIme || activity.korisnicko_ime;
+
+      const datum =
+        activity.datumAktivnosti || activity.datum_aktivnosti;
+
+      const vrsta =
+        activity.vrstaAktivnosti || activity.vrsta_aktivnosti;
+
+      const response = await fetch(
+        `${API_URL}/aktivnost/${korisnickoIme}/${datum}/${vrsta}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      if (response.ok) {
+        setActivities((prev) =>
+          prev.filter(
+            (a) =>
+              !(
+                getActivityDate(a) === datum &&
+                getActivityType(a) === vrsta
+              )
+          )
+        );
+
+        Alert.alert('Success', 'Activity deleted successfully.');
+      } else {
+        Alert.alert('Error', 'Failed to delete activity.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Something went wrong.');
+    }
   };
 
   return (
@@ -168,7 +202,7 @@ export const ActivityHistoryScreen: React.FC = () => {
                     </Text>
                   </View>
 
-                  <Pressable style={styles.deleteButton} onPress={handleDelete}>
+                  <Pressable style={styles.deleteButton} onPress={() => handleDelete(activity)}>
                     <MaterialCommunityIcons name="trash-can-outline" size={22} color="#ef4444" />
                   </Pressable>
                 </View>

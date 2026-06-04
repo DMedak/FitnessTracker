@@ -12,7 +12,10 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { calculateCaloriesBurned } from '../utils/calculations';
+import {
+  ActivityIntensity,
+  calculateCaloriesBurned,
+} from '../utils/calculations';
 import { BottomNav } from '../components/BottomNav';
 import { API_URL } from '../config/api';
 
@@ -35,6 +38,28 @@ const activityTypes = [
   'Boxing',
 ];
 
+const intensityOptions: {
+  label: string;
+  value: ActivityIntensity;
+  description: string;
+}[] = [
+  {
+    label: 'Light',
+    value: 'light',
+    description: 'Easy pace',
+  },
+  {
+    label: 'Moderate',
+    value: 'moderate',
+    description: 'Normal effort',
+  },
+  {
+    label: 'Intense',
+    value: 'intense',
+    description: 'Hard effort',
+  },
+];
+
 type Tezina = {
   datumUnosa?: string;
   datum_unosa?: string;
@@ -43,6 +68,7 @@ type Tezina = {
 
 export const AddActivityScreen: React.FC = () => {
   const [activityType, setActivityType] = useState('');
+  const [intensity, setIntensity] = useState<ActivityIntensity>('moderate');
   const [duration, setDuration] = useState('');
   const [estimatedCalories, setEstimatedCalories] = useState(0);
 
@@ -66,7 +92,7 @@ export const AddActivityScreen: React.FC = () => {
 
       const latestWeight = Number(sortedWeights[0].tezina);
 
-      if (!Number.isNaN(latestWeight)) {
+      if (!Number.isNaN(latestWeight) && latestWeight > 0) {
         return latestWeight;
       }
     }
@@ -75,14 +101,22 @@ export const AddActivityScreen: React.FC = () => {
     const profileData = await profileResponse.json();
 
     if (profileResponse.ok && profileData?.trenutnaTezina) {
-      return Number(profileData.trenutnaTezina);
+      const profileWeight = Number(profileData.trenutnaTezina);
+
+      if (!Number.isNaN(profileWeight) && profileWeight > 0) {
+        return profileWeight;
+      }
     }
 
     return 70;
   };
 
-  const calculateCalories = async (type: string, minutes: string) => {
-    const parsedMinutes = parseFloat(minutes);
+  const calculateCalories = async (
+    type: string,
+    minutes: string,
+    selectedIntensity: ActivityIntensity
+  ) => {
+    const parsedMinutes = parseFloat(minutes.replace(',', '.'));
 
     if (!type || !minutes || Number.isNaN(parsedMinutes) || parsedMinutes <= 0) {
       setEstimatedCalories(0);
@@ -94,7 +128,8 @@ export const AddActivityScreen: React.FC = () => {
     const calories = calculateCaloriesBurned(
       type,
       parsedMinutes,
-      currentWeight
+      currentWeight,
+      selectedIntensity
     );
 
     setEstimatedCalories(calories);
@@ -102,19 +137,29 @@ export const AddActivityScreen: React.FC = () => {
 
   const handleDurationChange = (value: string) => {
     setDuration(value);
-    calculateCalories(activityType, value);
+    calculateCalories(activityType, value, intensity);
   };
 
   const handleActivityTypeChange = (value: string) => {
     setActivityType(value);
-    calculateCalories(value, duration);
+    calculateCalories(value, duration, intensity);
+  };
+
+  const handleIntensityChange = (value: ActivityIntensity) => {
+    setIntensity(value);
+    calculateCalories(activityType, duration, value);
   };
 
   const handleSubmit = async () => {
     try {
-      const parsedDuration = parseFloat(duration);
+      const parsedDuration = parseFloat(duration.replace(',', '.'));
 
-      if (!activityType || !duration || Number.isNaN(parsedDuration) || parsedDuration <= 0) {
+      if (
+        !activityType ||
+        !duration ||
+        Number.isNaN(parsedDuration) ||
+        parsedDuration <= 0
+      ) {
         Alert.alert('Error', 'Fill in all required fields');
         return;
       }
@@ -202,9 +247,47 @@ export const AddActivityScreen: React.FC = () => {
             ))}
           </View>
 
+          <Text style={styles.label}>Intensity</Text>
+          <View style={styles.intensityGrid}>
+            {intensityOptions.map((option) => (
+              <Pressable
+                key={option.value}
+                onPress={() => handleIntensityChange(option.value)}
+                style={[
+                  styles.intensityButton,
+                  intensity === option.value && styles.intensityButtonActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.intensityTitle,
+                    intensity === option.value && styles.intensityTitleActive,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+
+                <Text
+                  style={[
+                    styles.intensityDescription,
+                    intensity === option.value &&
+                      styles.intensityDescriptionActive,
+                  ]}
+                >
+                  {option.description}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
           <Text style={styles.label}>Duration (minutes)</Text>
           <View style={styles.inputWrapper}>
-            <MaterialCommunityIcons name="clock-outline" size={22} color="#94a3b8" style={styles.icon} />
+            <MaterialCommunityIcons
+              name="clock-outline"
+              size={22}
+              color="#94a3b8"
+              style={styles.icon}
+            />
             <TextInput
               value={duration}
               onChangeText={handleDurationChange}
@@ -218,6 +301,9 @@ export const AddActivityScreen: React.FC = () => {
             <View style={styles.calorieBox}>
               <Text style={styles.calorieLabel}>Estimated Calories Burned</Text>
               <Text style={styles.calorieValue}>{estimatedCalories} kcal</Text>
+              <Text style={styles.calorieHint}>
+                Based on activity type, intensity, duration and your current weight.
+              </Text>
             </View>
           )}
 
@@ -227,8 +313,15 @@ export const AddActivityScreen: React.FC = () => {
             </Pressable>
 
             <Pressable style={styles.saveWrapper} onPress={handleSubmit}>
-              <LinearGradient colors={['#06b6d4', '#10b981']} style={styles.saveButton}>
-                <MaterialCommunityIcons name="content-save-outline" size={20} color="white" />
+              <LinearGradient
+                colors={['#06b6d4', '#10b981']}
+                style={styles.saveButton}
+              >
+                <MaterialCommunityIcons
+                  name="content-save-outline"
+                  size={20}
+                  color="white"
+                />
                 <Text style={styles.saveText}>Save Activity</Text>
               </LinearGradient>
             </Pressable>
@@ -237,11 +330,14 @@ export const AddActivityScreen: React.FC = () => {
 
         <View style={styles.noteBox}>
           <Text style={styles.noteText}>
-            <Text style={styles.noteBold}>Note:</Text> Calorie estimates are based on average
-            values and may vary based on intensity and individual factors.
+            <Text style={styles.noteBold}>Note:</Text> Calorie estimates are
+            calculated using MET values and selected intensity. Actual calorie
+            burn may vary based on heart rate, fitness level and individual
+            factors.
           </Text>
         </View>
       </ScrollView>
+
       <BottomNav />
     </View>
   );
@@ -332,6 +428,41 @@ const styles = StyleSheet.create({
   activityTextActive: {
     color: '#0891b2',
   },
+  intensityGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 18,
+  },
+  intensityButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: 'white',
+  },
+  intensityButtonActive: {
+    borderColor: '#10b981',
+    backgroundColor: '#ecfdf5',
+  },
+  intensityTitle: {
+    color: '#374151',
+    fontWeight: '700',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  intensityTitleActive: {
+    color: '#059669',
+  },
+  intensityDescription: {
+    color: '#94a3b8',
+    fontSize: 11,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  intensityDescriptionActive: {
+    color: '#059669',
+  },
   inputWrapper: {
     justifyContent: 'center',
     marginBottom: 18,
@@ -368,6 +499,12 @@ const styles = StyleSheet.create({
     color: '#0891b2',
     fontSize: 30,
     fontWeight: '700',
+  },
+  calorieHint: {
+    color: '#64748b',
+    fontSize: 12,
+    marginTop: 4,
+    lineHeight: 17,
   },
   buttonRow: {
     flexDirection: 'row',

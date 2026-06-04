@@ -50,7 +50,41 @@ const getAktivnostiByKorisnik = async (req, res) => {
   }
 };
 
+const deleteAktivnost = async (req, res) => {
+  try {
+    const {
+      korisnickoIme,
+      datumAktivnosti,
+      vrstaAktivnosti,
+    } = req.params;
+
+    const deleted = await Aktivnost.destroy({
+      where: {
+        korisnickoIme,
+        datumAktivnosti,
+        vrstaAktivnosti,
+      },
+    });
+
+    if (!deleted) {
+      return res.status(404).json({
+        message: 'Activity not found.',
+      });
+    }
+
+    return res.json({
+      message: 'Activity deleted successfully.',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error deleting activity.',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createAktivnost,
   getAktivnostiByKorisnik,
+  deleteAktivnost,
 };

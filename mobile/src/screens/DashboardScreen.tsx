@@ -64,6 +64,9 @@ export const DashboardScreen = () => {
   const getActivityDate = (item: Aktivnost) =>
     item.datumAktivnosti || item.datum_aktivnosti || '';
 
+  const getActivityType = (item: Aktivnost) =>
+    item.vrstaAktivnosti || item.vrsta_aktivnosti || 'Activity';
+
   const getActivityCalories = (item: Aktivnost) =>
     Number(item.potrosnjaKalorija || item.potrosnja_kalorija || 0);
 
@@ -110,6 +113,14 @@ export const DashboardScreen = () => {
     );
   }, [weights]);
 
+  const sortedActivities = useMemo(() => {
+    return [...activities].sort(
+      (a, b) =>
+        new Date(getActivityDate(b)).getTime() -
+        new Date(getActivityDate(a)).getTime()
+    );
+  }, [activities]);
+
   const currentWeight = useMemo(() => {
     if (sortedWeights.length > 0) {
       const latestWeight = Number(sortedWeights[0].tezina);
@@ -140,7 +151,7 @@ export const DashboardScreen = () => {
 
   const weightChange = useMemo(() => {
     if (!currentWeight || !previousWeight) {
-      return 0;
+      return null;
     }
 
     return Number((currentWeight - previousWeight).toFixed(1));
@@ -162,20 +173,32 @@ export const DashboardScreen = () => {
     return getBMICategory(Number(bmi));
   }, [bmi]);
 
-  const todayCalories = useMemo(() => {
+  const todayActivities = useMemo(() => {
     const today = new Date().toLocaleDateString('en-CA');
 
-    return Math.round(
-      activities
-        .filter((item) => getActivityDate(item) === today)
-        .reduce((sum, item) => sum + getActivityCalories(item), 0)
-    );
+    return activities.filter((item) => getActivityDate(item) === today);
   }, [activities]);
+
+  const todayCalories = useMemo(() => {
+    return Math.round(
+      todayActivities.reduce((sum, item) => sum + getActivityCalories(item), 0)
+    );
+  }, [todayActivities]);
+
+  const todayMinutes = useMemo(() => {
+    return todayActivities.reduce(
+      (sum, item) => sum + Number(item.trajanje || 0),
+      0
+    );
+  }, [todayActivities]);
 
   const weeklyActivities = useMemo(() => {
     const today = new Date();
     const sevenDaysAgo = new Date();
+
     sevenDaysAgo.setDate(today.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+    today.setHours(23, 59, 59, 999);
 
     return activities.filter((item) => {
       const date = new Date(getActivityDate(item));
@@ -194,6 +217,14 @@ export const DashboardScreen = () => {
       (sum, item) => sum + Number(item.trajanje || 0),
       0
     );
+  }, [weeklyActivities]);
+
+  const activeDaysThisWeek = useMemo(() => {
+    const days = new Set(
+      weeklyActivities.map((item) => getActivityDate(item)).filter(Boolean)
+    );
+
+    return days.size;
   }, [weeklyActivities]);
 
   const streak = useMemo(() => {
@@ -218,30 +249,30 @@ export const DashboardScreen = () => {
     return count;
   }, [activities]);
 
-  const progressPercent = useMemo(() => {
-    if (weights.length < 2) {
-      return 35;
+  const weeklyGoalPercent = useMemo(() => {
+    const goalDays = 5;
+    const progress = Math.round((activeDaysThisWeek / goalDays) * 100);
+
+    return Math.min(progress, 100);
+  }, [activeDaysThisWeek]);
+
+  const topActivityType = useMemo(() => {
+    if (weeklyActivities.length === 0) {
+      return null;
     }
 
-    const chronological = [...weights].sort(
-      (a, b) =>
-        new Date(getWeightDate(a)).getTime() -
-        new Date(getWeightDate(b)).getTime()
-    );
+    const counts: Record<string, number> = {};
 
-    const start = Number(chronological[0].tezina);
-    const latest = Number(chronological[chronological.length - 1].tezina);
+    weeklyActivities.forEach((item) => {
+      const type = getActivityType(item);
+      counts[type] = (counts[type] || 0) + 1;
+    });
 
-    if (Number.isNaN(start) || Number.isNaN(latest) || start === latest) {
-      return 35;
-    }
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+  }, [weeklyActivities]);
 
-    const diff = Math.abs(latest - start);
-    const estimatedGoalDistance = Math.max(diff * 2, 1);
-    const progress = Math.round((diff / estimatedGoalDistance) * 100);
-
-    return Math.min(Math.max(progress, 15), 100);
-  }, [weights]);
+  const latestActivity =
+    sortedActivities.length > 0 ? sortedActivities[0] : null;
 
   const goalText = () => {
     if (!profil?.cilj) {
@@ -260,7 +291,29 @@ export const DashboardScreen = () => {
     }
   };
 
-  const latestActivity = activities.length > 0 ? activities[activities.length - 1] : null;
+  const getTodayMessage = () => {
+    if (todayActivities.length === 0) {
+      return 'No activities yet today. Add a workout and start building momentum.';
+    }
+
+    if (todayCalories >= 500) {
+      return 'Great pace today. You already have a strong daily result.';
+    }
+
+    return 'Good start. One more short activity would nicely complete the day.';
+  };
+
+  const getWeightChangeText = () => {
+    if (weightChange === null) {
+      return '--';
+    }
+
+    if (weightChange > 0) {
+      return `+${weightChange.toFixed(1)} kg`;
+    }
+
+    return `${weightChange.toFixed(1)} kg`;
+  };
 
   return (
     <View style={styles.root}>
@@ -281,119 +334,148 @@ export const DashboardScreen = () => {
               </Text>
 
               <Text style={styles.headerSubtitle}>
-                Here is your fitness overview
+                Your daily fitness overview
               </Text>
             </View>
           </LinearGradient>
 
-          <View style={styles.heroCard}>
-            <View style={styles.heroTop}>
-              <View>
-                <Text style={styles.heroLabel}>Current Weight</Text>
-                <Text style={styles.heroWeight}>
-                  {currentWeight ? `${currentWeight} kg` : '-- kg'}
-                </Text>
+          <LinearGradient
+            colors={['#06b6d4', '#10b981']}
+            style={styles.todayCard}
+          >
+            <View style={styles.todayTopRow}>
+              <View style={styles.todayTextBlock}>
+                <Text style={styles.todayLabel}>Today's Summary</Text>
+                <Text style={styles.todayMessage}>{getTodayMessage()}</Text>
               </View>
 
-              <View style={styles.goalPill}>
-                <MaterialCommunityIcons name="target" size={17} color="#0891b2" />
-                <Text style={styles.goalPillText}>{goalText()}</Text>
-              </View>
-            </View>
-
-            <View style={styles.heroStatsRow}>
-              <View style={styles.heroMiniStat}>
-                <Text style={styles.heroMiniLabel}>BMI</Text>
-                <Text style={styles.heroMiniValue}>{bmi}</Text>
-                <Text style={styles.heroMiniSmall}>{bmiCategory}</Text>
-              </View>
-
-              <View style={styles.heroMiniStat}>
-                <Text style={styles.heroMiniLabel}>Change</Text>
-                <Text
-                  style={[
-                    styles.heroMiniValue,
-                    weightChange < 0 ? styles.goodText : styles.warningText,
-                  ]}
-                >
-                  {weightChange > 0 ? '+' : ''}
-                  {weightChange.toFixed(1)} kg
-                </Text>
-                <Text style={styles.heroMiniSmall}>Last entry</Text>
+              <View style={styles.todayIconCircle}>
+                <MaterialCommunityIcons name="fire" size={30} color="white" />
               </View>
             </View>
 
-            <View style={styles.progressHeader}>
-              <Text style={styles.progressText}>Progress trend</Text>
-              <Text style={styles.progressText}>{progressPercent}%</Text>
+            <View style={styles.todayMainRow}>
+              <Text style={styles.todayCalories}>{todayCalories}</Text>
+              <Text style={styles.todayUnit}>kcal</Text>
+            </View>
+
+            <View style={styles.todayStatsRow}>
+              <View style={styles.todaySmallStat}>
+                <MaterialCommunityIcons
+                  name="clock-outline"
+                  size={19}
+                  color="white"
+                />
+                <Text style={styles.todaySmallValue}>{todayMinutes} min</Text>
+              </View>
+
+              <View style={styles.todaySmallStat}>
+                <MaterialCommunityIcons
+                  name="run-fast"
+                  size={19}
+                  color="white"
+                />
+                <Text style={styles.todaySmallValue}>
+                  {todayActivities.length} activities
+                </Text>
+              </View>
+            </View>
+          </LinearGradient>
+
+          <View style={styles.weekCard}>
+            <View style={styles.cardHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>Weekly Momentum</Text>
+                <Text style={styles.cardSubtitle}>
+                  Active {activeDaysThisWeek} of 5 target days
+                </Text>
+              </View>
+
+              <View style={styles.streakBadge}>
+                <MaterialCommunityIcons
+                  name="lightning-bolt"
+                  size={18}
+                  color="#059669"
+                />
+                <Text style={styles.streakText}>{streak} days</Text>
+              </View>
             </View>
 
             <View style={styles.progressBackground}>
               <View
                 style={[
                   styles.progressFill,
-                  { width: `${progressPercent}%` },
+                  { width: `${weeklyGoalPercent}%` },
                 ]}
               />
             </View>
-          </View>
 
-          <View style={styles.grid}>
-            <LinearGradient
-              colors={['#f97316', '#ef4444']}
-              style={styles.statCard}
-            >
-              <MaterialCommunityIcons name="fire" size={30} color="white" />
-              <Text style={styles.statNumber}>{todayCalories}</Text>
-              <Text style={styles.statLabel}>Calories Today</Text>
-            </LinearGradient>
-
-            <LinearGradient
-              colors={['#8b5cf6', '#ec4899']}
-              style={styles.statCard}
-            >
-              <MaterialCommunityIcons name="calendar-week" size={30} color="white" />
-              <Text style={styles.statNumber}>{weeklyActivities.length}</Text>
-              <Text style={styles.statLabel}>Activities This Week</Text>
-            </LinearGradient>
-          </View>
-
-          <View style={styles.weekCard}>
-            <Text style={styles.cardTitle}>This Week</Text>
-
-            <View style={styles.weekGrid}>
-              <View style={styles.weekItem}>
-                <MaterialCommunityIcons name="fire" size={22} color="#f97316" />
+            <View style={styles.weekStatsRow}>
+              <View style={styles.weekStatItem}>
                 <Text style={styles.weekValue}>{weeklyCalories}</Text>
                 <Text style={styles.weekLabel}>kcal</Text>
               </View>
 
-              <View style={styles.weekItem}>
-                <MaterialCommunityIcons name="clock-outline" size={22} color="#06b6d4" />
+              <View style={styles.weekDivider} />
+
+              <View style={styles.weekStatItem}>
                 <Text style={styles.weekValue}>{weeklyMinutes}</Text>
                 <Text style={styles.weekLabel}>minutes</Text>
               </View>
 
-              <View style={styles.weekItem}>
-                <MaterialCommunityIcons name="lightning-bolt" size={22} color="#10b981" />
-                <Text style={styles.weekValue}>{streak}</Text>
-                <Text style={styles.weekLabel}>day streak</Text>
+              <View style={styles.weekDivider} />
+
+              <View style={styles.weekStatItem}>
+                <Text style={styles.weekValue}>{weeklyActivities.length}</Text>
+                <Text style={styles.weekLabel}>activities</Text>
               </View>
             </View>
+          </View>
+
+          <Text style={styles.sectionTitle}>Your Metrics</Text>
+
+          <View style={styles.metricsGrid}>
+            <MetricCard
+              icon="scale-bathroom"
+              label="Weight"
+              value={currentWeight ? `${currentWeight} kg` : '-- kg'}
+              description={`Goal: ${goalText()}`}
+            />
+
+            <MetricCard
+              icon="human-male-height"
+              label="BMI"
+              value={bmi}
+              description={bmiCategory}
+            />
+
+            <MetricCard
+              icon="trending-up"
+              label="Change"
+              value={getWeightChangeText()}
+              description="Last entry"
+              valueStyle={
+                weightChange !== null && weightChange < 0
+                  ? styles.goodText
+                  : styles.warningText
+              }
+            />
           </View>
 
           {latestActivity && (
             <View style={styles.latestCard}>
               <View style={styles.latestIcon}>
-                <MaterialCommunityIcons name="run-fast" size={24} color="#0891b2" />
+                <MaterialCommunityIcons
+                  name="run-fast"
+                  size={27}
+                  color="#0891b2"
+                />
               </View>
 
               <View style={{ flex: 1 }}>
                 <Text style={styles.latestLabel}>Latest Activity</Text>
                 <Text style={styles.latestTitle}>
-                  {latestActivity.vrstaAktivnosti ||
-                    latestActivity.vrsta_aktivnosti ||
-                    'Activity'}
+                  {getActivityType(latestActivity)}
                 </Text>
                 <Text style={styles.latestSubtitle}>
                   {latestActivity.trajanje} min •{' '}
@@ -403,24 +485,46 @@ export const DashboardScreen = () => {
             </View>
           )}
 
+          <View style={styles.insightCard}>
+            <View style={styles.insightIcon}>
+              <MaterialCommunityIcons
+                name="lightbulb-on-outline"
+                size={26}
+                color="#0891b2"
+              />
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <Text style={styles.insightLabel}>Insight</Text>
+              <Text style={styles.insightText}>
+                {topActivityType
+                  ? `Your most common activity this week is ${topActivityType}. Keep building your rhythm.`
+                  : 'Add your first activity this week and start building momentum.'}
+              </Text>
+            </View>
+          </View>
+
           <Text style={styles.sectionTitle}>Quick Actions</Text>
 
           <View style={styles.actionGrid}>
-            <ActionButton
-              icon="plus"
-              label="Add Weight"
-              onPress={() => router.push('/add-weight')}
-            />
             <ActionButton
               icon="run"
               label="Add Activity"
               onPress={() => router.push('/add-activity')}
             />
+
+            <ActionButton
+              icon="scale-bathroom"
+              label="Add Weight"
+              onPress={() => router.push('/add-weight')}
+            />
+
             <ActionButton
               icon="chart-line"
               label="Progress"
               onPress={() => router.push('/progress')}
             />
+
             <ActionButton
               icon="account"
               label="Profile"
@@ -435,6 +539,32 @@ export const DashboardScreen = () => {
   );
 };
 
+function MetricCard({
+  icon,
+  label,
+  value,
+  description,
+  valueStyle,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  description: string;
+  valueStyle?: object;
+}) {
+  return (
+    <View style={styles.metricCard}>
+      <View style={styles.metricIcon}>
+        <MaterialCommunityIcons name={icon} size={24} color="#0891b2" />
+      </View>
+
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={[styles.metricValue, valueStyle]}>{value}</Text>
+      <Text style={styles.metricDescription}>{description}</Text>
+    </View>
+  );
+}
+
 function ActionButton({
   icon,
   label,
@@ -447,7 +577,7 @@ function ActionButton({
   return (
     <Pressable style={styles.actionButton} onPress={onPress}>
       <View style={styles.actionIcon}>
-        <MaterialCommunityIcons name={icon} size={25} color="#0891b2" />
+        <MaterialCommunityIcons name={icon} size={27} color="#0891b2" />
       </View>
       <Text style={styles.actionText}>{label}</Text>
     </Pressable>
@@ -458,259 +588,403 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
+
   scroll: {
     paddingBottom: 120,
   },
+
   header: {
     padding: 28,
     paddingTop: 52,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    paddingBottom: 34,
+    borderBottomLeftRadius: 34,
+    borderBottomRightRadius: 34,
   },
+
   headerTitle: {
     color: 'white',
-    fontSize: 27,
-    fontWeight: '700',
+    fontSize: 34,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
+
   headerSubtitle: {
     color: '#ccfbf1',
-    marginTop: 6,
-    fontSize: 15,
+    marginTop: 8,
+    fontSize: 17,
+    fontWeight: '600',
   },
-  heroCard: {
-    backgroundColor: 'white',
+
+  todayCard: {
     margin: 16,
-    padding: 20,
-    borderRadius: 20,
+    marginTop: 22,
+    padding: 22,
+    borderRadius: 24,
     elevation: 5,
     shadowColor: '#000',
     shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
+    overflow: 'hidden',
   },
-  heroTop: {
+
+  todayTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 14,
+    alignItems: 'flex-start',
+  },
+
+  todayTextBlock: {
+    flex: 1,
+    paddingRight: 8,
+  },
+
+  todayLabel: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+
+  todayMessage: {
+    color: '#ecfeff',
+    fontSize: 16,
+    lineHeight: 24,
+    maxWidth: 255,
+    fontWeight: '500',
+  },
+
+  todayIconCircle: {
+    width: 58,
+    height: 58,
+    minWidth: 58,
+    borderRadius: 29,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+    marginRight: 2,
+  },
+
+  todayMainRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginTop: 28,
+  },
+
+  todayCalories: {
+    color: 'white',
+    fontSize: 56,
+    fontWeight: '800',
+  },
+
+  todayUnit: {
+    color: '#ecfeff',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 10,
+    marginLeft: 8,
+  },
+
+  todayStatsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+
+  todaySmallStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+
+  todaySmallValue: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  weekCard: {
+    backgroundColor: 'white',
+    marginHorizontal: 16,
+    marginBottom: 18,
+    padding: 20,
+    borderRadius: 22,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 9,
+    shadowOffset: { width: 0, height: 4 },
+  },
+
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
     alignItems: 'flex-start',
+    marginBottom: 18,
   },
-  heroLabel: {
-    color: '#64748b',
-    fontSize: 14,
-  },
-  heroWeight: {
-    color: '#111827',
-    fontSize: 36,
-    fontWeight: '800',
-    marginTop: 3,
-  },
-  goalPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#ecfeff',
-    borderWidth: 1,
-    borderColor: '#a5f3fc',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 999,
-  },
-  goalPillText: {
-    color: '#0891b2',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  heroStatsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 18,
-  },
-  heroMiniStat: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    padding: 14,
-    borderRadius: 14,
-  },
-  heroMiniLabel: {
-    color: '#64748b',
-    fontSize: 12,
-  },
-  heroMiniValue: {
-    color: '#111827',
+
+  cardTitle: {
+    color: '#1f2937',
     fontSize: 24,
     fontWeight: '800',
-    marginTop: 4,
   },
-  heroMiniSmall: {
-    color: '#94a3b8',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  goodText: {
-    color: '#059669',
-  },
-  warningText: {
-    color: '#f97316',
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 18,
-    marginBottom: 8,
-  },
-  progressText: {
+
+  cardSubtitle: {
     color: '#64748b',
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 16,
+    marginTop: 5,
+    fontWeight: '500',
   },
+
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ecfdf5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+
+  streakText: {
+    color: '#059669',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
   progressBackground: {
     height: 12,
     backgroundColor: '#e5e7eb',
     borderRadius: 999,
     overflow: 'hidden',
   },
+
   progressFill: {
     height: '100%',
     backgroundColor: '#10b981',
+    borderRadius: 999,
   },
-  grid: {
+
+  weekStatsRow: {
     flexDirection: 'row',
-    gap: 14,
-    paddingHorizontal: 16,
-    marginBottom: 14,
+    alignItems: 'center',
+    marginTop: 20,
   },
-  statCard: {
+
+  weekStatItem: {
     flex: 1,
-    padding: 18,
-    borderRadius: 18,
-    minHeight: 122,
+    alignItems: 'center',
   },
-  statNumber: {
-    color: 'white',
+
+  weekValue: {
+    color: '#111827',
     fontSize: 28,
     fontWeight: '800',
-    marginTop: 12,
   },
-  statLabel: {
-    color: '#fff7ed',
-    fontSize: 13,
-    marginTop: 4,
-    fontWeight: '600',
-  },
-  weekCard: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 14,
-    padding: 18,
-    borderRadius: 18,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 9,
-  },
-  cardTitle: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: '#1f2937',
-    marginBottom: 15,
-  },
-  weekGrid: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  weekItem: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    borderRadius: 14,
-    padding: 12,
-    alignItems: 'center',
-  },
-  weekValue: {
-    fontSize: 21,
-    fontWeight: '800',
-    color: '#111827',
-    marginTop: 6,
-  },
+
   weekLabel: {
     color: '#64748b',
-    fontSize: 11,
-    marginTop: 2,
-    textAlign: 'center',
+    fontSize: 13,
+    marginTop: 3,
+    fontWeight: '600',
   },
-  latestCard: {
-    backgroundColor: 'white',
+
+  weekDivider: {
+    width: 1,
+    height: 42,
+    backgroundColor: '#e5e7eb',
+  },
+
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: '800',
     marginHorizontal: 16,
+    marginTop: 4,
     marginBottom: 14,
-    padding: 16,
-    borderRadius: 18,
+    color: '#1f2937',
+  },
+
+  metricsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+    gap: 12,
+    paddingHorizontal: 16,
+    marginBottom: 18,
+  },
+
+  metricCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 20,
     elevation: 4,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
+
+  metricIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#ecfeff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+
+  metricLabel: {
+    color: '#64748b',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  metricValue: {
+    color: '#111827',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 6,
+  },
+
+  metricDescription: {
+    color: '#94a3b8',
+    fontSize: 13,
+    marginTop: 5,
+    fontWeight: '600',
+  },
+
+  goodText: {
+    color: '#059669',
+  },
+
+  warningText: {
+    color: '#f97316',
+  },
+
+  latestCard: {
+    backgroundColor: 'white',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 18,
+    borderRadius: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+
   latestIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: '#ecfeff',
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   latestLabel: {
     color: '#64748b',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
+
   latestTitle: {
     color: '#111827',
-    fontSize: 17,
+    fontSize: 22,
     fontWeight: '800',
-    marginTop: 2,
+    marginTop: 3,
   },
+
   latestSubtitle: {
     color: '#64748b',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    marginHorizontal: 16,
+    fontSize: 16,
     marginTop: 4,
-    marginBottom: 12,
-    color: '#1f2937',
+    fontWeight: '500',
   },
+
+  insightCard: {
+    backgroundColor: '#f0fdfa',
+    marginHorizontal: 16,
+    marginBottom: 20,
+    padding: 18,
+    borderRadius: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    borderWidth: 1,
+    borderColor: '#99f6e4',
+  },
+
+  insightIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  insightLabel: {
+    color: '#0f766e',
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  insightText: {
+    color: '#115e59',
+    fontSize: 16,
+    lineHeight: 23,
+    fontWeight: '600',
+    marginTop: 5,
+  },
+
   actionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 14,
     paddingHorizontal: 16,
   },
+
   actionButton: {
     width: '47.8%',
-    height: 100,
+    height: 112,
     backgroundColor: 'white',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    elevation: 2,
+    gap: 10,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
+
   actionIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#ecfeff',
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   actionText: {
     color: '#374151',
+    fontSize: 16,
     fontWeight: '800',
     textAlign: 'center',
   },

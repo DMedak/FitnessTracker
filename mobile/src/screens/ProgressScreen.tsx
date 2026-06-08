@@ -193,6 +193,11 @@ export const ProgressScreen: React.FC = () => {
     0
   );
 
+  const weeklyDuration = weeklyActivityData.reduce(
+    (sum, d) => sum + d.duration,
+    0
+  );
+
   const weeklyActivities = activities.filter((a) => {
     const activityDate = new Date(getActivityDate(a));
     const today = new Date();
@@ -210,17 +215,57 @@ export const ProgressScreen: React.FC = () => {
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.content}>
+        <LinearGradient colors={['#06b6d4', '#10b981']} style={styles.weekHero}>
+          <View style={styles.weekHeroTop}>
+            <View>
+              <Text style={styles.weekHeroTitle}>This Week</Text>
+              <Text style={styles.weekHeroSubtitle}>
+                Your last 7 days of progress
+              </Text>
+            </View>
+
+            <View style={styles.weekHeroIcon}>
+              <MaterialCommunityIcons name="chart-line" size={28} color="white" />
+            </View>
+          </View>
+
+          <View style={styles.weekHeroStats}>
+            <View style={styles.weekHeroStat}>
+              <Text style={styles.weekHeroValue}>{weeklyActivities}</Text>
+              <Text style={styles.weekHeroLabel}>Activities</Text>
+            </View>
+
+            <View style={styles.weekDivider} />
+
+            <View style={styles.weekHeroStat}>
+              <Text style={styles.weekHeroValue}>
+                {Math.round(weeklyCalories)}
+              </Text>
+              <Text style={styles.weekHeroLabel}>kcal</Text>
+            </View>
+
+            <View style={styles.weekDivider} />
+
+            <View style={styles.weekHeroStat}>
+              <Text style={styles.weekHeroValue}>{weeklyDuration}</Text>
+              <Text style={styles.weekHeroLabel}>min</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
         <View style={styles.statsRow}>
           <LinearGradient colors={['#06b6d4', '#0891b2']} style={styles.statCard}>
-            <MaterialCommunityIcons
-              name={
-                parseFloat(weightProgress.change) < 0
-                  ? 'trending-down'
-                  : 'trending-up'
-              }
-              size={28}
-              color="white"
-            />
+            <View style={styles.statIcon}>
+              <MaterialCommunityIcons
+                name={
+                  parseFloat(weightProgress.change) < 0
+                    ? 'trending-down'
+                    : 'trending-up'
+                }
+                size={24}
+                color="white"
+              />
+            </View>
 
             <Text style={styles.statNumber}>
               {parseFloat(weightProgress.change) > 0 ? '+' : ''}
@@ -231,39 +276,26 @@ export const ProgressScreen: React.FC = () => {
           </LinearGradient>
 
           <LinearGradient colors={['#10b981', '#059669']} style={styles.statCard}>
-            <MaterialCommunityIcons name="run-fast" size={28} color="white" />
+            <View style={styles.statIcon}>
+              <MaterialCommunityIcons name="run-fast" size={24} color="white" />
+            </View>
+
             <Text style={styles.statNumber}>{totalActivities}</Text>
             <Text style={styles.statLabel}>Total Activities</Text>
           </LinearGradient>
         </View>
 
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>This Week</Text>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Activities</Text>
-            <Text style={styles.summaryValue}>{weeklyActivities}</Text>
-          </View>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Calories</Text>
-            <Text style={styles.summaryValue}>{Math.round(weeklyCalories)} kcal</Text>
-          </View>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total Duration</Text>
-            <Text style={styles.summaryValue}>{totalDuration} min</Text>
-          </View>
-
-          <View style={styles.summaryRowLast}>
-            <Text style={styles.summaryLabel}>Weight Change</Text>
-            <Text style={styles.summaryValue}>{weightProgress.change} kg</Text>
-          </View>
-        </View>
-
         {weightChartData.length > 1 && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Weight Progress</Text>
+            <View style={styles.titleRow}>
+              <MaterialCommunityIcons
+                name="scale-bathroom"
+                size={22}
+                color="#10b981"
+              />
+              <Text style={styles.cardTitleNoMargin}>Weight Progress</Text>
+            </View>
+
             <Text style={styles.cardSubtitle}>
               Trend of your weight changes over time
             </Text>
@@ -322,7 +354,7 @@ export const ProgressScreen: React.FC = () => {
                 ],
               }}
               width={screenWidth}
-              height={240}
+              height={230}
               yAxisLabel=""
               yAxisSuffix=""
               fromZero
@@ -353,6 +385,10 @@ export const ProgressScreen: React.FC = () => {
               <Text style={styles.cardTitleNoMargin}>Activity Distribution</Text>
             </View>
 
+            <Text style={styles.cardSubtitle}>
+              Minutes spent by activity type
+            </Text>
+
             {activityDistribution.map((item, index) => (
               <View key={item.name} style={styles.distributionRow}>
                 <View
@@ -370,11 +406,18 @@ export const ProgressScreen: React.FC = () => {
         )}
 
         {totalCalories > 0 && (
-          <LinearGradient colors={['#f97316', '#ef4444']} style={styles.totalCard}>
-            <MaterialCommunityIcons name="fire" size={48} color="white" />
-            <Text style={styles.totalNumber}>{Math.round(totalCalories)}</Text>
-            <Text style={styles.totalLabel}>Total Calories Burned</Text>
-          </LinearGradient>
+          <View style={styles.totalCard}>
+            <View style={styles.totalIcon}>
+              <MaterialCommunityIcons name="fire" size={30} color="#f97316" />
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <Text style={styles.totalLabel}>Total Calories Burned</Text>
+              <Text style={styles.totalNumber}>
+                {Math.round(totalCalories)} kcal
+              </Text>
+            </View>
+          </View>
         )}
 
         {weights.length === 0 && activities.length === 0 && (
@@ -383,7 +426,7 @@ export const ProgressScreen: React.FC = () => {
               <MaterialCommunityIcons
                 name="chart-line"
                 size={34}
-                color="#94a3b8"
+                color="#0891b2"
               />
             </View>
 
@@ -406,84 +449,145 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ecfeff',
   },
+
   header: {
     padding: 24,
     paddingTop: 50,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
+
   headerTitle: {
     fontSize: 26,
     fontWeight: '700',
     color: 'white',
     marginBottom: 4,
   },
+
   headerSubtitle: {
     color: '#cffafe',
   },
+
   content: {
     padding: 16,
     paddingBottom: 120,
     gap: 14,
   },
+
+  weekHero: {
+    borderRadius: 20,
+    padding: 18,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+  },
+
+  weekHeroTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+
+  weekHeroTitle: {
+    color: 'white',
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+
+  weekHeroSubtitle: {
+    color: '#ecfeff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  weekHeroIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  weekHeroStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    borderRadius: 16,
+    paddingVertical: 14,
+  },
+
+  weekHeroStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+
+  weekHeroValue: {
+    color: 'white',
+    fontSize: 26,
+    fontWeight: '800',
+  },
+
+  weekHeroLabel: {
+    color: '#ecfeff',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+
+  weekDivider: {
+    width: 1,
+    height: 38,
+    backgroundColor: 'rgba(255, 255, 255, 0.26)',
+  },
+
   statsRow: {
     flexDirection: 'row',
     gap: 12,
   },
+
   statCard: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
-  },
-  statNumber: {
-    color: 'white',
-    fontSize: 25,
-    fontWeight: '700',
-    marginTop: 10,
-  },
-  statLabel: {
-    color: '#ecfeff',
-    fontSize: 13,
-  },
-  summaryCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 18,
     elevation: 4,
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 14,
+
+  statIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+
+  statNumber: {
+    color: 'white',
+    fontSize: 25,
+    fontWeight: '800',
+    marginTop: 12,
   },
-  summaryRowLast: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
+
+  statLabel: {
+    color: '#ecfeff',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 3,
   },
-  summaryLabel: {
-    color: '#64748b',
-    fontSize: 15,
-  },
-  summaryValue: {
-    color: '#111827',
-    fontWeight: '700',
-    fontSize: 15,
-  },
+
   card: {
     backgroundColor: 'white',
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 18,
     elevation: 4,
     shadowColor: '#000',
@@ -491,92 +595,124 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     overflow: 'hidden',
   },
+
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginBottom: 6,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
+
   cardTitleNoMargin: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 19,
+    fontWeight: '800',
     color: '#1f2937',
   },
+
   cardSubtitle: {
     color: '#64748b',
     fontSize: 13,
     marginBottom: 12,
+    fontWeight: '500',
   },
+
   chart: {
     borderRadius: 16,
     marginLeft: -12,
   },
+
   distributionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
+
   colorDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
   },
+
   rowLabel: {
     flex: 1,
     color: '#64748b',
+    fontSize: 15,
+    fontWeight: '600',
   },
+
   rowValue: {
     color: '#111827',
-    fontWeight: '700',
+    fontWeight: '800',
+    fontSize: 15,
   },
+
   totalCard: {
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: 'white',
+    borderRadius: 18,
+    padding: 18,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 14,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
   },
-  totalNumber: {
-    color: 'white',
-    fontSize: 40,
-    fontWeight: '700',
-    marginTop: 10,
+
+  totalIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#fff7ed',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+
   totalLabel: {
-    color: '#ffedd5',
-    fontSize: 17,
+    color: '#64748b',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 3,
   },
+
+  totalNumber: {
+    color: '#111827',
+    fontSize: 24,
+    fontWeight: '800',
+  },
+
   emptyCard: {
     backgroundColor: 'white',
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 32,
     alignItems: 'center',
     elevation: 4,
   },
+
   emptyIcon: {
     width: 66,
     height: 66,
     borderRadius: 33,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#ecfeff',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
+
   emptyTitle: {
-    color: '#64748b',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#1f2937',
+    fontSize: 17,
+    fontWeight: '800',
     marginBottom: 6,
   },
+
   emptyText: {
     color: '#94a3b8',
     textAlign: 'center',
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

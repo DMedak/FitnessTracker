@@ -76,7 +76,7 @@ export const AddWeightScreen: React.FC = () => {
             <MaterialCommunityIcons name="arrow-left" size={26} color="white" />
           </Pressable>
 
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Add Weight</Text>
             <Text style={styles.headerSubtitle}>Track your weight progress</Text>
           </View>
@@ -85,25 +85,43 @@ export const AddWeightScreen: React.FC = () => {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
-          <View style={styles.cardTitleRow}>
-            <MaterialCommunityIcons name="scale-bathroom" size={22} color="#06b6d4" />
-            <Text style={styles.cardTitle}>New Weight Entry</Text>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIcon}>
+              <MaterialCommunityIcons
+                name="scale-bathroom"
+                size={26}
+                color="#0891b2"
+              />
+            </View>
+
+            <View>
+              <Text style={styles.cardTitle}>New Weight Entry</Text>
+              <Text style={styles.cardSubtitle}>
+                Add today's weight measurement
+              </Text>
+            </View>
           </View>
 
           <Text style={styles.label}>Weight (kg)</Text>
-          <TextInput
-            value={weight}
-            onChangeText={setWeight}
-            placeholder="70.5"
-            keyboardType="decimal-pad"
-            style={styles.input}
-          />
+
+          <View style={styles.inputWrapper}>
+            <TextInput
+              value={weight}
+              onChangeText={setWeight}
+              placeholder="70.5"
+              placeholderTextColor="#94a3b8"
+              keyboardType="decimal-pad"
+              style={styles.input}
+            />
+          </View>
 
           <Text style={styles.label}>Note (Optional)</Text>
+
           <TextInput
             value={note}
             onChangeText={setNote}
             placeholder="Add any notes about this entry..."
+            placeholderTextColor="#94a3b8"
             multiline
             numberOfLines={4}
             style={[styles.input, styles.textArea]}
@@ -116,7 +134,11 @@ export const AddWeightScreen: React.FC = () => {
 
             <Pressable style={styles.saveWrapper} onPress={handleSubmit}>
               <LinearGradient colors={['#06b6d4', '#10b981']} style={styles.saveButton}>
-                <MaterialCommunityIcons name="content-save-outline" size={20} color="white" />
+                <MaterialCommunityIcons
+                  name="content-save-outline"
+                  size={20}
+                  color="white"
+                />
                 <Text style={styles.saveText}>Save Entry</Text>
               </LinearGradient>
             </Pressable>
@@ -124,6 +146,14 @@ export const AddWeightScreen: React.FC = () => {
         </View>
 
         <View style={styles.tipBox}>
+          <View style={styles.tipIcon}>
+            <MaterialCommunityIcons
+              name="lightbulb-on-outline"
+              size={22}
+              color="#0891b2"
+            />
+          </View>
+
           <Text style={styles.tipText}>
             <Text style={styles.tipBold}>Tip:</Text> Weight can be entered once per day.
             For consistent tracking, weigh yourself at the same time each day.
@@ -141,122 +171,195 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ecfeff',
   },
+
   header: {
     padding: 24,
     paddingTop: 50,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
+
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
   },
+
   backButton: {
-    padding: 8,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontSize: 31,
+    fontWeight: '800',
     color: 'white',
   },
+
   headerSubtitle: {
     color: '#cffafe',
-    marginTop: 2,
+    marginTop: 4,
+    fontSize: 16,
+    fontWeight: '500',
   },
+
   content: {
     padding: 16,
+    paddingBottom: 120,
+    gap: 16,
   },
+
   card: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 18,
-    elevation: 4,
+    borderRadius: 22,
+    padding: 20,
+    elevation: 5,
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
   },
-  cardTitleRow: {
+
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 22,
+    gap: 14,
+    marginBottom: 24,
   },
+
+  cardIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#ecfeff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 21,
+    fontWeight: '800',
     color: '#1f2937',
   },
+
+  cardSubtitle: {
+    color: '#64748b',
+    fontSize: 14,
+    marginTop: 3,
+    fontWeight: '500',
+  },
+
   label: {
     color: '#374151',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     marginBottom: 8,
   },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    fontSize: 16,
-    backgroundColor: 'white',
+
+  inputWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
     marginBottom: 18,
   },
+
+  input: {
+    height: 54,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 15,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    color: '#111827',
+    backgroundColor: '#f8fafc',
+    marginBottom: 18,
+  },
+
   textArea: {
     height: 120,
     textAlignVertical: 'top',
-    paddingTop: 12,
+    paddingTop: 13,
     marginBottom: 28,
   },
+
   buttonRow: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 5,
   },
+
   cancelButton: {
     flex: 1,
-    height: 50,
-    borderRadius: 10,
+    height: 54,
+    borderRadius: 15,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   cancelText: {
     color: '#374151',
-    fontWeight: '700',
+    fontWeight: '800',
+    fontSize: 15,
   },
+
   saveWrapper: {
     flex: 1,
   },
+
   saveButton: {
-    height: 50,
-    borderRadius: 10,
+    height: 54,
+    borderRadius: 15,
     flexDirection: 'row',
     gap: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#10b981',
+    shadowOpacity: 0.22,
+    shadowRadius: 9,
+    shadowOffset: { width: 0, height: 5 },
   },
+
   saveText: {
     color: 'white',
-    fontWeight: '700',
+    fontWeight: '800',
+    fontSize: 15,
   },
+
   tipBox: {
-    marginTop: 18,
-    padding: 14,
-    backgroundColor: '#eff6ff',
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    padding: 16,
+    backgroundColor: '#f0fdfa',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: '#99f6e4',
   },
+
+  tipIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   tipText: {
-    color: '#1e40af',
+    flex: 1,
+    color: '#115e59',
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 21,
+    fontWeight: '500',
   },
+
   tipBold: {
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });

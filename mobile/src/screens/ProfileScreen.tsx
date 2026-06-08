@@ -55,7 +55,9 @@ export const ProfileScreen: React.FC = () => {
   const [editSpol, setEditSpol] = useState<'male' | 'female' | 'other'>('male');
   const [editVisina, setEditVisina] = useState('');
   const [editTezina, setEditTezina] = useState('');
-  const [editCilj, setEditCilj] = useState<'loss' | 'gain' | 'maintenance'>('maintenance');
+  const [editCilj, setEditCilj] = useState<'loss' | 'gain' | 'maintenance'>(
+    'maintenance'
+  );
 
   useEffect(() => {
     loadProfile();
@@ -99,12 +101,14 @@ export const ProfileScreen: React.FC = () => {
       }
 
       if (weightResponse.ok && Array.isArray(weightData) && weightData.length > 0) {
-        const sortedWeights = [...weightData].sort((a: TezinaData, b: TezinaData) => {
-          const dateA = new Date(a.datumUnosa || a.datum_unosa || '').getTime();
-          const dateB = new Date(b.datumUnosa || b.datum_unosa || '').getTime();
+        const sortedWeights = [...weightData].sort(
+          (a: TezinaData, b: TezinaData) => {
+            const dateA = new Date(a.datumUnosa || a.datum_unosa || '').getTime();
+            const dateB = new Date(b.datumUnosa || b.datum_unosa || '').getTime();
 
-          return dateB - dateA;
-        });
+            return dateB - dateA;
+          }
+        );
 
         const latestWeight = Number(sortedWeights[0].tezina);
 
@@ -266,7 +270,9 @@ export const ProfileScreen: React.FC = () => {
     <View style={styles.root}>
       <LinearGradient colors={['#06b6d4', '#10b981']} style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.headerTitle}>Profile</Text>
+          <View>
+            <Text style={styles.headerTitle}>Profile</Text>
+          </View>
 
           <Pressable
             onPress={() => (isEditing ? handleCancelEdit() : setIsEditing(true))}
@@ -274,7 +280,7 @@ export const ProfileScreen: React.FC = () => {
           >
             <MaterialCommunityIcons
               name={isEditing ? 'close' : 'pencil'}
-              size={24}
+              size={23}
               color="white"
             />
           </Pressable>
@@ -282,10 +288,10 @@ export const ProfileScreen: React.FC = () => {
 
         <View style={styles.profileRow}>
           <View style={styles.avatar}>
-            <MaterialCommunityIcons name="account-outline" size={36} color="white" />
+            <MaterialCommunityIcons name="account-outline" size={35} color="white" />
           </View>
 
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.nameText}>
               {user ? `${user.ime} ${user.prezime}` : 'User'}
             </Text>
@@ -298,9 +304,16 @@ export const ProfileScreen: React.FC = () => {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            {isEditing ? 'Edit Personal Information' : 'Personal Information'}
-          </Text>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardTitle}>
+              {isEditing ? 'Edit Personal Information' : 'Personal Information'}
+            </Text>
+            <Text style={styles.cardSubtitle}>
+              {isEditing
+                ? 'Update your profile values'
+                : 'Your current fitness profile'}
+            </Text>
+          </View>
 
           {profil ? (
             <>
@@ -313,7 +326,7 @@ export const ProfileScreen: React.FC = () => {
                     keyboardType="numeric"
                   />
                 ) : (
-                  <InfoBox icon="account-outline" label="Age" value={`${profil.dob} years`} />
+                  <InfoBox label="Age" value={`${profil.dob} years`} />
                 )}
 
                 {isEditing ? (
@@ -325,10 +338,12 @@ export const ProfileScreen: React.FC = () => {
                       { label: 'Female', value: 'female' },
                       { label: 'Other', value: 'other' },
                     ]}
-                    onChange={(value) => setEditSpol(value as 'male' | 'female' | 'other')}
+                    onChange={(value) =>
+                      setEditSpol(value as 'male' | 'female' | 'other')
+                    }
                   />
                 ) : (
-                  <InfoBox icon="account-outline" label="Gender" value={profil.spol} />
+                  <InfoBox label="Gender" value={profil.spol} />
                 )}
 
                 {isEditing ? (
@@ -339,7 +354,7 @@ export const ProfileScreen: React.FC = () => {
                     keyboardType="numeric"
                   />
                 ) : (
-                  <InfoBox icon="ruler" label="Height" value={`${profil.visina} cm`} />
+                  <InfoBox label="Height" value={`${profil.visina} cm`} />
                 )}
 
                 {isEditing ? (
@@ -351,8 +366,7 @@ export const ProfileScreen: React.FC = () => {
                   />
                 ) : (
                   <InfoBox
-                    icon="scale-bathroom"
-                    label="Current"
+                    label="Current Weight"
                     value={displayedWeight ? `${displayedWeight} kg` : '-- kg'}
                   />
                 )}
@@ -372,7 +386,6 @@ export const ProfileScreen: React.FC = () => {
                   />
                 ) : (
                   <InfoBox
-                    icon="target"
                     label="Goal"
                     value={
                       profil.cilj === 'loss'
@@ -391,8 +404,13 @@ export const ProfileScreen: React.FC = () => {
                     <Text style={styles.cancelButtonText}>Cancel</Text>
                   </Pressable>
 
-                  <Pressable style={styles.saveButton} onPress={handleSaveProfile}>
-                    <Text style={styles.saveButtonText}>Save Changes</Text>
+                  <Pressable style={styles.saveButtonWrapper} onPress={handleSaveProfile}>
+                    <LinearGradient
+                      colors={['#06b6d4', '#10b981']}
+                      style={styles.saveButton}
+                    >
+                      <Text style={styles.saveButtonText}>Save Changes</Text>
+                    </LinearGradient>
                   </Pressable>
                 </View>
               )}
@@ -406,18 +424,21 @@ export const ProfileScreen: React.FC = () => {
 
         {profil && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Health Metrics</Text>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardTitle}>Health Metrics</Text>
+              <Text style={styles.cardSubtitle}>BMI and daily calorie estimate</Text>
+            </View>
 
             <View style={styles.metricsRow}>
-              <View style={styles.metricCyan}>
+              <View style={styles.metricBox}>
                 <Text style={styles.metricLabel}>BMI</Text>
-                <Text style={styles.metricCyanValue}>{bmi}</Text>
+                <Text style={styles.metricValue}>{bmi}</Text>
                 <Text style={styles.metricSmall}>{bmiCategory}</Text>
               </View>
 
-              <View style={styles.metricGreen}>
-                <Text style={styles.metricLabel}>Daily Calorie Goal</Text>
-                <Text style={styles.metricGreenValue}>{dailyCalories}</Text>
+              <View style={styles.metricBox}>
+                <Text style={styles.metricLabel}>Daily Goal</Text>
+                <Text style={styles.metricValue}>{dailyCalories}</Text>
                 <Text style={styles.metricSmall}>kcal/day</Text>
               </View>
             </View>
@@ -425,7 +446,11 @@ export const ProfileScreen: React.FC = () => {
         )}
 
         <Pressable style={styles.helpButton} onPress={openHelpPdf}>
-          <MaterialCommunityIcons name="file-document-outline" size={20} color="#0891b2" />
+          <MaterialCommunityIcons
+            name="file-document-outline"
+            size={20}
+            color="#0891b2"
+          />
           <Text style={styles.helpText}>Open Help Guide</Text>
         </Pressable>
 
@@ -441,21 +466,16 @@ export const ProfileScreen: React.FC = () => {
 };
 
 function InfoBox({
-  icon,
   label,
   value,
 }: {
-  icon: any;
   label: string;
   value: string;
 }) {
   return (
     <View style={styles.infoBox}>
-      <MaterialCommunityIcons name={icon} size={22} color="#64748b" />
-      <View style={{ flex: 1 }}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue}>{value}</Text>
-      </View>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
     </View>
   );
 }
@@ -472,16 +492,14 @@ function EditBox({
   keyboardType?: 'default' | 'numeric' | 'decimal-pad';
 }) {
   return (
-    <View style={styles.infoBox}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          keyboardType={keyboardType}
-          style={styles.input}
-        />
-      </View>
+    <View style={styles.editBox}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType={keyboardType}
+        style={styles.input}
+      />
     </View>
   );
 }
@@ -531,207 +549,277 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ecfeff',
   },
+
   header: {
     padding: 24,
     paddingTop: 50,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
+
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 18,
   },
+
   editHeaderButton: {
-    padding: 8,
-    borderRadius: 10,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: 'white',
-  },
-  profileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  headerTitle: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: 'white',
+  },
+
+  headerSubtitle: {
+    color: '#cffafe',
+    marginTop: 3,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+  },
+
+  avatar: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   nameText: {
     color: 'white',
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '800',
   },
+
   emailText: {
     color: '#cffafe',
     marginTop: 2,
+    fontSize: 14,
+    fontWeight: '500',
   },
+
   content: {
     padding: 16,
     paddingBottom: 120,
-    gap: 14,
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 18,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-  },
-  cardTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 16,
-  },
-  infoGrid: {
     gap: 12,
   },
+
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 18,
+    padding: 15,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 4 },
+  },
+
+  cardHeaderRow: {
+    marginBottom: 12,
+  },
+
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1f2937',
+  },
+
+  cardSubtitle: {
+    color: '#64748b',
+    fontSize: 13,
+    marginTop: 3,
+    fontWeight: '600',
+  },
+
+  infoGrid: {
+    gap: 9,
+  },
+
   infoBox: {
     width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 13,
+    backgroundColor: '#f8fafc',
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+
+  editBox: {
+    width: '100%',
     padding: 12,
     backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
+
   optionBox: {
     width: '100%',
     padding: 12,
     backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
+
   optionList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 7,
     marginTop: 8,
   },
+
   optionButton: {
-    paddingVertical: 8,
+    paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: '#cbd5e1',
     backgroundColor: 'white',
   },
+
   optionButtonActive: {
     borderColor: '#10b981',
     backgroundColor: '#ecfdf5',
   },
+
   optionText: {
     color: '#475569',
     fontWeight: '700',
     fontSize: 13,
   },
+
   optionTextActive: {
     color: '#059669',
   },
+
   infoLabel: {
     color: '#64748b',
     fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 3,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
+
   infoValue: {
     color: '#111827',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     textTransform: 'capitalize',
   },
+
   input: {
-    marginTop: 6,
+    marginTop: 5,
+    height: 42,
     borderWidth: 1,
     borderColor: '#cbd5e1',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderRadius: 10,
+    paddingHorizontal: 11,
     color: '#111827',
     backgroundColor: 'white',
+    fontSize: 15,
+    fontWeight: '600',
   },
+
   editButtonRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
+    gap: 11,
+    marginTop: 14,
   },
+
   cancelButton: {
     flex: 1,
-    height: 48,
-    borderRadius: 12,
+    height: 46,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: '#cbd5e1',
+    backgroundColor: '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   cancelButtonText: {
     color: '#475569',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  saveButton: {
+
+  saveButtonWrapper: {
     flex: 1,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#10b981',
+  },
+
+  saveButton: {
+    height: 46,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   saveButtonText: {
     color: 'white',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
+
   metricsRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
-  metricCyan: {
+
+  metricBox: {
     flex: 1,
-    padding: 16,
-    backgroundColor: '#ecfeff',
+    paddingVertical: 11,
+    paddingHorizontal: 13,
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#a5f3fc',
-    borderRadius: 12,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
   },
-  metricGreen: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#ecfdf5',
-    borderWidth: 1,
-    borderColor: '#a7f3d0',
-    borderRadius: 12,
-  },
+
   metricLabel: {
     color: '#64748b',
-    fontSize: 13,
-    marginBottom: 5,
+    fontSize: 12,
+    marginBottom: 4,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
-  metricCyanValue: {
-    color: '#0891b2',
-    fontSize: 26,
-    fontWeight: '700',
+
+  metricValue: {
+    color: '#111827',
+    fontSize: 25,
+    fontWeight: '800',
   },
-  metricGreenValue: {
-    color: '#059669',
-    fontSize: 26,
-    fontWeight: '700',
-  },
+
   metricSmall: {
     color: '#64748b',
     fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
   },
+
   logoutButton: {
     height: 50,
-    borderRadius: 12,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: '#fecaca',
     backgroundColor: 'white',
@@ -740,18 +828,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   logoutText: {
     color: '#dc2626',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 16,
   },
+
   emptyText: {
     color: '#64748b',
     fontSize: 14,
   },
+
   helpButton: {
     height: 50,
-    borderRadius: 12,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: '#a5f3fc',
     backgroundColor: 'white',
@@ -760,9 +851,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   helpText: {
     color: '#0891b2',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 16,
   },
 });

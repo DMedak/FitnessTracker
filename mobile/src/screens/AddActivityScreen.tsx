@@ -171,12 +171,28 @@ export const AddActivityScreen: React.FC = () => {
         return;
       }
 
+      const currentWeight = await getCurrentWeight();
+
+      const caloriesForSave = calculateCaloriesBurned(
+        activityType,
+        parsedDuration,
+        currentWeight,
+        intensity
+      );
+
+      if (!caloriesForSave || caloriesForSave <= 0) {
+        Alert.alert('Error', 'Calories could not be calculated. Please try again.');
+        return;
+      }
+
+      setEstimatedCalories(caloriesForSave);
+
       const body = {
         korisnickoIme,
         datumAktivnosti: new Date().toLocaleDateString('en-CA'),
         vrstaAktivnosti: activityType,
         trajanje: Math.round(parsedDuration),
-        potrosnjaKalorija: estimatedCalories,
+        potrosnjaKalorija: caloriesForSave,
         napomena: '',
       };
 

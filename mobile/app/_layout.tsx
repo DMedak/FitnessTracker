@@ -6,7 +6,6 @@ import { useEffect } from 'react';
 
 export default function RootLayout() {
   useEffect(() => {
-    NavigationBar.setBackgroundColorAsync('#ecfeff');
     NavigationBar.setButtonStyleAsync('dark');
   }, []);
 

@@ -75,6 +75,7 @@ export const OnboardingScreen: React.FC = () => {
       }
 
       await AsyncStorage.setItem('profil', JSON.stringify(result.profil || body));
+      await AsyncStorage.setItem('isLoggedIn', 'true');
 
       completeOnboarding({
         korisnickoIme: korisnickoIme.trim(),

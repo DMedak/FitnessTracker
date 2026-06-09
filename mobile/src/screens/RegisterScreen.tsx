@@ -26,6 +26,8 @@ export const RegisterScreen: React.FC = () => {
   const [confirmLozinka, setConfirmLozinka] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleRegister = async () => {
     setError('');
@@ -59,11 +61,6 @@ export const RegisterScreen: React.FC = () => {
         mail,
         lozinka,
       });
-
-      if (result?.error) {
-        setError(result.error || 'Registration failed');
-        return;
-      }
 
       await AsyncStorage.setItem('korisnickoIme', korisnickoIme);
 
@@ -218,9 +215,20 @@ export const RegisterScreen: React.FC = () => {
                     onChangeText={setLozinka}
                     placeholder="Create password"
                     placeholderTextColor="#94a3b8"
-                    secureTextEntry
-                    style={styles.input}
+                    secureTextEntry={!showPassword}
+                    style={[styles.input, styles.passwordInput]}
                   />
+
+                  <Pressable
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeIcon}
+                  >
+                    <MaterialCommunityIcons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={22}
+                      color="#94a3b8"
+                    />
+                  </Pressable>
                 </View>
 
                 <Text style={styles.hintText}>
@@ -244,9 +252,20 @@ export const RegisterScreen: React.FC = () => {
                     onChangeText={setConfirmLozinka}
                     placeholder="Repeat password"
                     placeholderTextColor="#94a3b8"
-                    secureTextEntry
-                    style={styles.input}
+                    secureTextEntry={!showConfirmPassword}
+                    style={[styles.input, styles.passwordInput]}
                   />
+
+                  <Pressable
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={styles.eyeIcon}
+                  >
+                    <MaterialCommunityIcons
+                      name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={22}
+                      color="#94a3b8"
+                    />
+                  </Pressable>
                 </View>
               </View>
 
@@ -318,10 +337,10 @@ const styles = StyleSheet.create({
   },
 
   logo: {
-    width: 230,
-    height: 230,
+    width: 200,
+    height: 200,
     resizeMode: 'contain',
-    marginBottom: -64,
+    marginBottom: -25,
   },
 
   title: {
@@ -408,6 +427,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#111827',
     backgroundColor: '#f8fafc',
+  },
+
+  passwordInput: {
+    paddingRight: 48,
+  },
+
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    zIndex: 1,
   },
 
   hintText: {

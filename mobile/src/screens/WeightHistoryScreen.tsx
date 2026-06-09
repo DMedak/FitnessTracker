@@ -67,9 +67,6 @@ export const WeightHistoryScreen: React.FC = () => {
 
   const totalEntries = sortedWeights.length;
 
-  const handleDelete = () => {
-    Alert.alert('Info', 'Delete endpoint još nije napravljen na backendu');
-  };
 
   return (
     <View style={styles.root}>
@@ -229,14 +226,6 @@ export const WeightHistoryScreen: React.FC = () => {
                         <Text style={styles.noteText}>{entry.napomena}</Text>
                       ) : null}
                     </View>
-
-                    <Pressable style={styles.deleteButton} onPress={handleDelete}>
-                      <MaterialCommunityIcons
-                        name="trash-can-outline"
-                        size={22}
-                        color="#ef4444"
-                      />
-                    </Pressable>
                   </View>
                 </View>
               );
@@ -521,14 +510,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 8,
     fontStyle: 'italic',
-  },
-
-  deleteButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#fef2f2',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

@@ -20,3 +20,7 @@ Detaljne upute nalaze se u:
 
 - backend/README.md
 - mobile/README.md
+
+## Instalacija
+
+Instalacija aplikacije moguća preko linka, te gumba "Install": https://expo.dev/accounts/dmedak/projects/mobile/builds/c62cd9c4-0d8d-44d6-b1ed-3041692aa3a9
